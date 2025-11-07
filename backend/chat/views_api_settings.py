@@ -8,6 +8,55 @@ from django.conf import settings
 import os
 
 
+@api_view(['GET'])
+def get_configured_providers(request):
+    """
+    GET: Get list of AI providers that have been configured (have API keys)
+    
+    Returns:
+    {
+        "providers": [
+            {"id": "openai", "name": "OpenAI (GPT-4, GPT-3.5)"},
+            {"id": "anthropic", "name": "Anthropic (Claude)"},
+            ...
+        ],
+        "current_provider": "openai"
+    }
+    """
+    configured_providers = []
+    
+    # Check which providers have API keys configured
+    if settings.OPENAI_API_KEY:
+        configured_providers.append({
+            "id": "openai",
+            "name": "OpenAI (GPT-4, GPT-3.5)"
+        })
+    
+    if settings.ANTHROPIC_API_KEY:
+        configured_providers.append({
+            "id": "anthropic",
+            "name": "Anthropic (Claude)"
+        })
+    
+    if settings.GOOGLE_API_KEY:
+        configured_providers.append({
+            "id": "google",
+            "name": "Google (Gemini)"
+        })
+    
+    # LM Studio is always available if base URL is configured
+    if settings.LM_STUDIO_BASE_URL:
+        configured_providers.append({
+            "id": "lmstudio",
+            "name": "LM Studio (Local)"
+        })
+    
+    return Response({
+        "providers": configured_providers,
+        "current_provider": settings.AI_PROVIDER
+    }, status=status.HTTP_200_OK)
+
+
 @api_view(['GET', 'POST'])
 def manage_ai_settings(request):
     """

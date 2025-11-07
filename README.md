@@ -12,26 +12,48 @@ ChatSumm is a full-stack web application that delivers real-time AI-assisted con
 
 ## Table of Contents
 1. [Overview](#overview)
-2. [Key Features](#key-features)
-3. [Architecture & Tech Stack](#architecture--tech-stack)
-4. [Project Structure](#project-structure)
-5. [Getting Started](#getting-started)
-6. [Configuration](#configuration)
-7. [Available Commands](#available-commands)
-8. [API Overview](#api-overview)
-9. [Data Model Summary](#data-model-summary)
-10. [Testing](#testing)
-11. [Deployment](#deployment)
-12. [Development Guidelines](#development-guidelines)
-13. [Contributing](#contributing)
-14. [License](#license)
-15. [Support](#support)
+2. [What's New](#whats-new)
+3. [Key Features](#key-features)
+4. [Architecture & Tech Stack](#architecture--tech-stack)
+5. [Project Structure](#project-structure)
+6. [Quick Start](#quick-start)
+7. [Getting Started](#getting-started)
+8. [Configuration](#configuration)
+9. [Available Commands](#available-commands)
+10. [API Overview](#api-overview)
+11. [Data Model Summary](#data-model-summary)
+12. [Testing](#testing)
+13. [Deployment](#deployment)
+14. [Development Guidelines](#development-guidelines)
+15. [Contributing](#contributing)
+16. [License](#license)
+17. [Support](#support)
 
 ---
 
 ## Overview
 
 Bring advanced conversation intelligence to your team. ChatSumm captures every message exchanged with Large Language Models (LLMs), stores them in PostgreSQL, and layers intelligence features—summaries, semantic search, and contextual question answering—on top of that history. The frontend delivers a polished, responsive interface, while the backend exposes a clean REST API for integrations or automation.
+
+## What's New
+
+### 🚀 Latest Features (v2.0)
+
+- **🤖 Auto-Fetch AI Models**: Real-time API key validation and automatic model discovery from providers
+- **🎨 Modern Glass-Morphism UI**: Professional design with gradients, animations, and responsive layouts
+- **⚙️ AI Settings Modal**: Easy configuration of multiple LLM providers directly from the frontend
+- **🌗 Dark Mode Support**: Automatic dark mode detection with full theme adaptation
+- **📱 Enhanced Mobile Experience**: Touch-optimized interface for all devices
+- **🔄 Improved Animations**: Smooth transitions and loading states throughout
+- **🛡️ Enhanced Security**: Better API key handling and validation feedback
+
+### Key Improvements
+
+- **10x Visual Appeal**: Modern design with backdrop blur effects and gradient backgrounds
+- **Better UX**: Intuitive navigation, clear feedback, and reduced setup steps
+- **AI Integration**: Frontend configuration for 4 major AI providers
+- **Performance**: GPU-accelerated animations and optimized rendering
+- **Accessibility**: Improved contrast, keyboard navigation, and screen reader support
 
 ## Key Features
 
@@ -45,7 +67,9 @@ Bring advanced conversation intelligence to your team. ChatSumm captures every m
 ### Detailed Features
 
 #### 1. Real-Time Chat Interface ✨
+
 Interactive chat interface for real-time conversations with AI, featuring a modern, ChatGPT-like UI.
+
 - Message Display: User messages on right (blue), AI messages on left (gray)
 - Timestamps: Each message shows time sent
 - Auto-Scroll: Automatically scrolls to newest message
@@ -55,7 +79,9 @@ Interactive chat interface for real-time conversations with AI, featuring a mode
 - Line Breaks: Preserves formatting in messages
 
 #### 2. Conversation Management 📚
+
 Comprehensive system for creating, storing, and organizing chat sessions.
+
 - Create Conversations: Start new chat sessions
 - Store History: All messages saved to database
 - Auto-Title: Automatic conversation naming
@@ -65,7 +91,9 @@ Comprehensive system for creating, storing, and organizing chat sessions.
 - Message Count: Track number of messages
 
 #### 3. AI Conversation Intelligence 🧠
+
 Advanced AI-powered features for analyzing and querying conversation history.
+
 - Automatic Summarization: Triggers when conversation ends
 - Topic Extraction: Automatically identifies main topics
 - Sentiment Analysis: Framework ready for tone analysis
@@ -73,7 +101,9 @@ Advanced AI-powered features for analyzing and querying conversation history.
 - Semantic Search: Search by meaning, not just keywords
 
 #### 4. Multi-LLM Provider Support 🤖
+
 Unified interface supporting multiple AI providers with easy switching.
+
 - LM Studio (Local): Privacy, no API costs, offline capable
 - OpenAI: High quality, fast responses, reliable
 - Anthropic Claude: Excellent reasoning, long context
@@ -89,7 +119,8 @@ Unified interface supporting multiple AI providers with easy switching.
 | AI Providers | OpenAI, Anthropic Claude, Google Gemini, LM Studio |
 | Tooling | npm workspaces, PowerShell/Bash scripts, ESLint, PostCSS |
 
-**Execution Flow**
+### Execution Flow
+
 1. UI sends chat actions to the REST API via the `lib/api.ts` client.
 2. Django processes requests, persists conversations and messages, and delegates AI calls to `chat/ai_service.py`.
 3. Responses are returned alongside updated conversation metadata for rendering in the frontend.
@@ -109,9 +140,29 @@ Unified interface supporting multiple AI providers with easy switching.
 └── README.md            # You are here
 ```
 
+## Quick Start
+
+### 3-Minute AI Setup
+
+1. **Start the App**: Run `npm run dev` to launch both frontend and backend
+2. **Open Settings**: Click the ⚙️ gear icon in the top-right
+3. **Configure AI Provider**:
+   - Choose your provider (OpenAI, Anthropic, Google, or LM Studio)
+   - Enter your API key
+   - Wait 1 second - models auto-fetch automatically!
+   - Select a model from the dropdown
+   - Click "Save Settings"
+4. **Start Chatting**: Go to Chat tab, type a message, and send!
+
+**Success Indicators**:
+- ✅ "API key is valid! Found X models" message
+- 💬 AI responds to your messages
+- 📚 Conversations are saved automatically
+
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js **18+** and npm
 - Python **3.9+** (with `venv` module)
 - PostgreSQL **12+** running locally or remotely
@@ -124,6 +175,7 @@ npm run dev      # starts backend (port 8000) and frontend (port 3000)
 ```
 
 The orchestration script will:
+
 1. Kill any previous servers bound to ports 3000/8000.
 2. Create/activate a Python virtual environment inside `backend/.venv`.
 3. Install Python dependencies from `backend/requirements.txt`.
@@ -181,6 +233,54 @@ NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
 
 > 💡 Environment templates (`backend/.env.example`, `.env.local.example`) are provided—copy and customise them rather than editing defaults.
 
+### AI Provider Setup with Auto-Fetch
+
+The settings modal provides **automatic model fetching** that validates your API keys and retrieves available models directly from AI providers!
+
+#### How to Configure
+
+1. **Open Settings**: Click the ⚙️ gear icon in the top-right corner
+2. **Select Provider**: Choose from OpenAI, Anthropic, Google, or LM Studio
+3. **Enter Credentials**: Paste your API key (base URL for LM Studio)
+4. **Auto-Validation**: Wait 1 second - the system automatically validates and fetches models
+5. **Select Model**: Choose from the populated dropdown
+6. **Save Settings**: Click "Save Settings" to apply
+
+#### Provider-Specific Details
+
+**OpenAI**:
+
+- Fetches all available GPT models (gpt-4, gpt-3.5-turbo, etc.)
+- Validates API key authentication
+- Sorts models by version (newest first)
+
+**Anthropic Claude**:
+
+- Tests API key with minimal call
+- Provides Claude 3 models (Opus, Sonnet, Haiku)
+- Validates authentication
+
+**Google Gemini**:
+
+- Fetches Gemini models (gemini-pro, gemini-pro-vision)
+- Shows display names for better UX
+- Validates API key
+
+**LM Studio (Local)**:
+
+- Connects to your local instance
+- Fetches loaded models
+- No API key required (optional)
+- Default URL: `http://localhost:1234/v1`
+
+#### Validation Messages
+
+- ✅ **Success**: "API key is valid! Found X models"
+- ❌ **Error**: "Invalid API key: Authentication failed"
+- ⚠️ **Warning**: "Cannot verify API key. Using default models"
+
+> **Security Note**: API keys are stored in browser localStorage and sent to backend. For production, implement proper encryption and authentication.
+
 ## Available Commands
 
 ### npm Scripts
@@ -209,12 +309,14 @@ NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
 | `/api/messages/send/` | POST | Send a user message and receive an AI response. |
 | `/api/conversations/search/` | GET | Keyword or semantic search across conversations. |
 | `/api/intelligence/query/` | POST | Ask questions about historical chats using semantic reasoning. |
+| `/api/settings/ai/` | GET/POST | Manage AI provider settings (new in v2.0). |
 
 The REST API returns JSON responses. Authentication middleware is ready for extension if you need multi-user support.
 
 ## Data Model Summary
 
-**Conversation**
+### Conversation
+
 - `id` – Primary key
 - `title` – Display name
 - `status` – `active` or `ended`
@@ -222,7 +324,8 @@ The REST API returns JSON responses. Authentication middleware is ready for exte
 - `ai_summary` – AI-generated synopsis
 - `metadata` – JSON field for provider/model context
 
-**Message**
+### Message
+
 - `id`
 - `conversation` – Foreign key to `Conversation`
 - `sender` – `user` or `ai`

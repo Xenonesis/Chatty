@@ -54,7 +54,8 @@ def send_message(request):
     Request body:
     {
         "conversation_id": int,
-        "content": str
+        "content": str,
+        "provider": str (optional)
     }
     
     Returns:
@@ -65,8 +66,9 @@ def send_message(request):
     """
     conversation_id = request.data.get('conversation_id')
     content = request.data.get('content')
+    provider = request.data.get('provider')
     
-    if not conversation_id or not content:
+    if conversation_id is None or not content or not str(content).strip():
         return Response(
             {"error": "conversation_id and content are required"},
             status=status.HTTP_400_BAD_REQUEST
@@ -111,7 +113,7 @@ def send_message(request):
         })
     
     # Generate AI response
-    ai_service = AIService()
+    ai_service = AIService(provider=provider)
     ai_response = ai_service.generate_response(messages_for_ai)
     
     # Create AI message

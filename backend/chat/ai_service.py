@@ -12,8 +12,8 @@ class AIService:
     Handles chat completions, summarization, and conversation analysis.
     """
     
-    def __init__(self):
-        self.provider = settings.AI_PROVIDER
+    def __init__(self, provider: str = None):
+        self.provider = provider or settings.AI_PROVIDER
         self.model = settings.AI_MODEL
         self._initialize_client()
     

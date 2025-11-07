@@ -89,12 +89,13 @@ class APIClient {
   }
 
   // Message endpoints
-  async sendMessage(conversationId: number, content: string): Promise<SendMessageResponse> {
+  async sendMessage(conversationId: number, content: string, provider?: string): Promise<SendMessageResponse> {
     return this.request<SendMessageResponse>('/messages/send/', {
       method: 'POST',
       body: JSON.stringify({
         conversation_id: conversationId,
         content,
+        provider,
       }),
     });
   }
@@ -128,6 +129,10 @@ class APIClient {
       method: 'POST',
       body: JSON.stringify({ provider, settings }),
     });
+  }
+
+  async getConfiguredProviders(): Promise<{ providers: Array<{ id: string; name: string }>; current_provider: string }> {
+    return this.request('/settings/ai/providers/');
   }
 }
 

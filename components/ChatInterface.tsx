@@ -8,11 +8,18 @@ interface ChatInterfaceProps {
   onConversationChange: (id: number | null) => void;
 }
 
+interface AIProvider {
+  id: string;
+  name: string;
+}
+
 export default function ChatInterface({ conversationId, onConversationChange }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationTitle, setConversationTitle] = useState('');
+  const [availableProviders, setAvailableProviders] = useState<AIProvider[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -28,6 +35,21 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       loadConversation(conversationId);
     }
   }, [conversationId]);
+
+  useEffect(() => {
+    // Load configured AI providers on mount
+    loadConfiguredProviders();
+  }, []);
+
+  const loadConfiguredProviders = async () => {
+    try {
+      const response = await api.getConfiguredProviders();
+      setAvailableProviders(response.providers);
+      setSelectedProvider(response.current_provider || (response.providers[0]?.id || ''));
+    } catch (error) {
+      console.error('Failed to load configured providers:', error);
+    }
+  };
 
   const loadConversation = async (id: number) => {
     try {
@@ -75,7 +97,7 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
     setIsLoading(true);
 
     try {
-      const response = await api.sendMessage(currentConversationId, userMessageContent);
+      const response = await api.sendMessage(currentConversationId, userMessageContent, selectedProvider);
       setMessages((prev) => [...prev, response.user_message, response.ai_message]);
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -217,12 +239,31 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       {/* Input Area */}
       <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm">
         <div className="flex gap-3">
+          {availableProviders.length > 0 && (
+            <select
+              value={selectedProvider}
+              onChange={(e) => setSelectedProvider(e.target.value)}
+              disabled={isLoading}
+              className="px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl 
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                       disabled:opacity-50 disabled:cursor-not-allowed transition-all
+                       font-medium text-sm min-w-[200px]"
+              title="Select AI Provider"
+            >
+              {availableProviders.map((provider) => (
+                <option key={provider.id} value={provider.id}>
+                  {provider.name}
+                </option>
+              ))}
+            </select>
+          )}
           <input
             type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             placeholder="Type your message here..."
-            disabled={isLoading}
+            disabled={isLoading || availableProviders.length === 0}
             className="flex-1 px-5 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl 
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
@@ -232,7 +273,7 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
           />
           <button
             type="submit"
-            disabled={!inputMessage.trim() || isLoading}
+            disabled={!inputMessage.trim() || isLoading || availableProviders.length === 0}
             className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 
                      transition-all disabled:opacity-50 disabled:cursor-not-allowed
                      font-semibold shadow-lg transform hover:scale-105 disabled:transform-none
@@ -244,6 +285,11 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
             </svg>
           </button>
         </div>
+        {availableProviders.length === 0 && (
+          <p className="text-xs text-red-500 dark:text-red-400 mt-2">
+            No AI providers configured. Please configure an AI provider in settings.
+          </p>
+        )}
       </form>
     </div>
   );

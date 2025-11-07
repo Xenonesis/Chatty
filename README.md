@@ -1,380 +1,277 @@
-# 🤖 AI Chat Portal with Conversation Intelligence
-
-A full-stack web application that enables real-time conversations with Large Language Models (LLMs), stores conversation histories, and provides AI-powered conversation analysis and intelligence features.
+# ChatSumm – AI Conversation Intelligence Platform
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
 ![Django](https://img.shields.io/badge/django-5.0-green.svg)
-![Next.js](https://img.shields.io/badge/next.js-16.0-black.svg)
-![React](https://img.shields.io/badge/react-19.2-blue.svg)
+![Next.js](https://img.shields.io/badge/next.js-14+-black.svg)
+![React](https://img.shields.io/badge/react-19-blue.svg)
 
-## 🚀 Quick Start
-
-### Run Everything with One Command
-
-**Using npm (Recommended):**
-```bash
-npm install    # First time only - install dependencies
-npm run dev    # Start both backend and frontend
-```
-
-This single command will:
-- ✅ Kill any previous server instances on ports 3000 & 8000
-- ✅ Set up Python virtual environment (if needed)
-- ✅ Install Python dependencies automatically
-- ✅ Run database migrations
-- ✅ Start Django backend on `http://localhost:8000`
-- ✅ Start Next.js frontend on `http://localhost:3000`
-- ✅ Show color-coded logs from both servers
-- ✅ Stop both servers with `Ctrl+C`
-
-**Alternative - Using shell scripts:**
-```powershell
-.\run.ps1          # Windows
-./run.sh           # Linux/Mac
-```
-
-### Run Backend or Frontend Separately
-
-**Using npm:**
-```bash
-npm run dev:backend   # Backend only (Django)
-npm run dev:frontend  # Frontend only (Next.js)
-npm run setup:backend # Setup backend environment manually
-```
-
-**Using shell scripts:**
-```powershell
-# Windows
-.\run_backend.ps1
-.\run_frontend.ps1
-
-# Linux/Mac
-./run_backend.sh
-./run_frontend.sh
-```
-
-### Prerequisites
-
-Before running `npm run dev`, ensure you have:
-- ✅ **Node.js 18+** - [Download](https://nodejs.org/)
-- ✅ **Python 3.9+** - [Download](https://www.python.org/downloads/)
-- ✅ **PostgreSQL 12+** - [Download](https://www.postgresql.org/download/) (running and configured)
-
-See [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed installation instructions.
-
-## ✨ Features
-
-### Core Features
-- **Real-time Chat Interface**: Interactive messaging with AI powered by multiple LLM providers
-- **Conversation Management**: Create, store, and organize chat sessions with full history
-- **AI Conversation Intelligence**: 
-  - Automatic conversation summarization
-  - Semantic search across conversations
-  - Intelligent querying about past discussions
-  - Topic extraction and analysis
-- **Multiple LLM Support**: OpenAI, Claude, Gemini, and LM Studio (local hosting)
-- **Modern UI/UX**: Responsive design with dark mode support using Tailwind CSS
-- **Production-Ready**: Clean architecture, comprehensive error handling, and optimized database queries
-
-## 🏗️ Architecture
-
-### Tech Stack
-
-**Backend:**
-- Django REST Framework 3.14
-- PostgreSQL 12+
-- Python 3.9+
-
-**Frontend:**
-- Next.js 16.0 (React 19.2)
-- TypeScript
-- Tailwind CSS 4
-
-**AI Integration:**
-- OpenAI API
-- Anthropic Claude API
-- Google Gemini API
-- LM Studio (local LLM hosting)
-
-### Project Structure
-
-```
-ai-chat-portal/
-├── backend/                 # Django REST Framework backend
-│   ├── config/             # Django project configuration
-│   ├── chat/               # Main chat application
-│   │   ├── models.py       # Database models
-│   │   ├── serializers.py  # API serializers
-│   │   ├── views.py        # API endpoints
-│   │   ├── ai_service.py   # AI integration service
-│   │   └── urls.py         # URL routing
-│   ├── manage.py
-│   └── requirements.txt
-├── app/                    # Next.js app directory
-│   ├── page.tsx           # Main application page
-│   ├── layout.tsx         # Root layout
-│   └── globals.css        # Global styles
-├── components/            # React components
-│   ├── ChatInterface.tsx
-│   ├── ConversationsList.tsx
-│   └── IntelligenceQuery.tsx
-├── lib/                   # Utilities
-│   └── api.ts            # API client
-├── public/               # Static assets
-└── README.md
-```
-
-## 📸 Screenshots
-
-### Chat Interface
-Modern, responsive chat interface with real-time messaging and conversation management.
-
-### Conversations Dashboard
-Browse and search through your conversation history with detailed metadata and summaries.
-
-### Intelligence Query
-Ask questions about your past conversations and get AI-powered insights.
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 18+ and npm
-- Python 3.9+
-- PostgreSQL 12+
-
-### Backend Setup
-
-1. **Setup PostgreSQL:**
-```bash
-createdb chatportal_db
-```
-
-2. **Install backend dependencies:**
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-3. **Configure environment:**
-```bash
-cp .env.example .env
-# Edit .env with your database credentials and AI API keys
-```
-
-4. **Run migrations:**
-```bash
-python manage.py makemigrations
-python manage.py migrate
-python manage.py createsuperuser
-```
-
-5. **Start backend server:**
-```bash
-python manage.py runserver
-```
-
-Backend will run at `http://localhost:8000`
-
-### Frontend Setup
-
-1. **Install frontend dependencies:**
-```bash
-npm install
-```
-
-2. **Configure environment:**
-```bash
-cp .env.local.example .env.local
-# Edit .env.local with backend API URL
-```
-
-3. **Start development server:**
-```bash
-npm run dev
-```
-
-Frontend will run at `http://localhost:3000`
-
-## 🔑 AI Provider Configuration
-
-### LM Studio (Recommended for Local/Privacy)
-
-1. Download and install [LM Studio](https://lmstudio.ai/)
-2. Load a model (e.g., Llama 2, Mistral, Phi)
-3. Start the local server in LM Studio
-4. Configure in `backend/.env`:
-```env
-AI_PROVIDER=lmstudio
-LM_STUDIO_BASE_URL=http://localhost:1234/v1
-LM_STUDIO_API_KEY=lm-studio
-AI_MODEL=local-model
-```
-
-### OpenAI
-
-```env
-AI_PROVIDER=openai
-OPENAI_API_KEY=sk-...
-AI_MODEL=gpt-4
-```
-
-### Anthropic Claude
-
-```env
-AI_PROVIDER=anthropic
-ANTHROPIC_API_KEY=sk-ant-...
-AI_MODEL=claude-3-opus-20240229
-```
-
-### Google Gemini
-
-```env
-AI_PROVIDER=google
-GOOGLE_API_KEY=...
-AI_MODEL=gemini-pro
-```
-
-## 📚 API Documentation
-
-### Conversations
-
-#### List all conversations
-```http
-GET /api/conversations/
-```
-
-#### Get conversation details
-```http
-GET /api/conversations/{id}/
-```
-
-#### Create new conversation
-```http
-POST /api/conversations/
-Content-Type: application/json
-
-{
-  "title": "New Conversation"
-}
-```
-
-#### End conversation (generates summary)
-```http
-POST /api/conversations/{id}/end/
-```
-
-### Messages
-
-#### Send message and get AI response
-```http
-POST /api/messages/send/
-Content-Type: application/json
-
-{
-  "conversation_id": 1,
-  "content": "Hello, how are you?"
-}
-```
-
-### Intelligence
-
-#### Query about past conversations
-```http
-POST /api/intelligence/query/
-Content-Type: application/json
-
-{
-  "query": "What did we discuss about Python?",
-  "search_keywords": "python"
-}
-```
-
-#### Search conversations
-```http
-GET /api/conversations/search/?q=keyword&semantic=true
-```
-
-## 🗄️ Database Schema
-
-### Conversation Model
-- `id` (Primary Key)
-- `title` (VARCHAR)
-- `start_timestamp` (DATETIME)
-- `end_timestamp` (DATETIME, nullable)
-- `status` (VARCHAR: 'active' | 'ended')
-- `ai_summary` (TEXT, nullable)
-- `metadata` (JSON)
-
-### Message Model
-- `id` (Primary Key)
-- `conversation_id` (Foreign Key → Conversation)
-- `content` (TEXT)
-- `sender` (VARCHAR: 'user' | 'ai')
-- `timestamp` (DATETIME)
-
-## 🧪 Testing
-
-### Backend Tests
-```bash
-cd backend
-python manage.py test
-```
-
-### Frontend Tests
-```bash
-npm run test  # (configure as needed)
-```
-
-## 🚢 Deployment
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed production deployment instructions.
-
-### Quick Deploy Options
-
-- **Backend**: Heroku, AWS, DigitalOcean, or any VPS with Gunicorn + Nginx
-- **Frontend**: Vercel, Netlify, or any Node.js hosting
-- **Database**: PostgreSQL on AWS RDS, Heroku Postgres, or managed PostgreSQL
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- Django REST Framework for the robust backend framework
-- Next.js team for the excellent React framework
-- OpenAI, Anthropic, Google for their AI APIs
-- LM Studio for local LLM hosting capabilities
-
-## 📧 Contact
-
-For questions or support, please open an issue in the GitHub repository.
-
-## 🗺️ Roadmap
-
-- [ ] Real-time streaming responses
-- [ ] Voice input/output integration
-- [ ] Conversation export (PDF, JSON, Markdown)
-- [ ] Multi-user support with authentication
-- [ ] Advanced analytics dashboard
-- [ ] Mobile app (React Native)
-- [ ] Browser extension
-- [ ] Conversation threading/branching
+ChatSumm is a full-stack web application that delivers real-time AI-assisted conversations, long-term conversation memory, and intelligence tooling such as semantic search, summarisation, and natural-language querying over historical threads. The project pairs a Django REST API with a modern Next.js frontend and supports multiple LLM providers including OpenAI, Anthropic Claude, Google Gemini, and locally hosted LM Studio models.
 
 ---
 
-**Built with ❤️ for better AI conversations**
+## Table of Contents
+1. [Overview](#overview)
+2. [Key Features](#key-features)
+3. [Architecture & Tech Stack](#architecture--tech-stack)
+4. [Project Structure](#project-structure)
+5. [Getting Started](#getting-started)
+6. [Configuration](#configuration)
+7. [Available Commands](#available-commands)
+8. [API Overview](#api-overview)
+9. [Data Model Summary](#data-model-summary)
+10. [Testing](#testing)
+11. [Deployment](#deployment)
+12. [Development Guidelines](#development-guidelines)
+13. [Contributing](#contributing)
+14. [License](#license)
+15. [Support](#support)
+
+---
+
+## Overview
+
+Bring advanced conversation intelligence to your team. ChatSumm captures every message exchanged with Large Language Models (LLMs), stores them in PostgreSQL, and layers intelligence features—summaries, semantic search, and contextual question answering—on top of that history. The frontend delivers a polished, responsive interface, while the backend exposes a clean REST API for integrations or automation.
+
+## Key Features
+
+- **Unified Conversation Hub** – Manage multiple AI chat sessions with persistent history and metadata.
+- **Conversation Intelligence** – Auto-generated summaries, semantic search, and natural-language queries across past chats.
+- **Pluggable AI Providers** – Switch between OpenAI, Anthropic, Google Gemini, or LM Studio without code changes.
+- **Modern Frontend UX** – Tailwind-powered Next.js interface with responsive layout, dark mode, and rich conversation context.
+- **Production-Ready Backend** – Django REST Framework with authentication hooks, validation, and clean architecture.
+- **Operational Tooling** – Helper scripts for setup, development, and deployment workflows on Windows, macOS, and Linux.
+
+### Detailed Features
+
+#### 1. Real-Time Chat Interface ✨
+Interactive chat interface for real-time conversations with AI, featuring a modern, ChatGPT-like UI.
+- Message Display: User messages on right (blue), AI messages on left (gray)
+- Timestamps: Each message shows time sent
+- Auto-Scroll: Automatically scrolls to newest message
+- Loading States: Animated "thinking" indicator while AI generates response
+- Message Input: Text input with send button
+- Character Limit: Handles long messages with proper formatting
+- Line Breaks: Preserves formatting in messages
+
+#### 2. Conversation Management 📚
+Comprehensive system for creating, storing, and organizing chat sessions.
+- Create Conversations: Start new chat sessions
+- Store History: All messages saved to database
+- Auto-Title: Automatic conversation naming
+- Status Tracking: Active vs Ended status
+- Metadata Storage: JSON field for flexible data
+- Duration Tracking: Calculate conversation length
+- Message Count: Track number of messages
+
+#### 3. AI Conversation Intelligence 🧠
+Advanced AI-powered features for analyzing and querying conversation history.
+- Automatic Summarization: Triggers when conversation ends
+- Topic Extraction: Automatically identifies main topics
+- Sentiment Analysis: Framework ready for tone analysis
+- Intelligent Querying: Ask questions about past conversations
+- Semantic Search: Search by meaning, not just keywords
+
+#### 4. Multi-LLM Provider Support 🤖
+Unified interface supporting multiple AI providers with easy switching.
+- LM Studio (Local): Privacy, no API costs, offline capable
+- OpenAI: High quality, fast responses, reliable
+- Anthropic Claude: Excellent reasoning, long context
+- Google Gemini: Free tier, multimodal capable
+
+## Architecture & Tech Stack
+
+| Layer | Technology |
+| --- | --- |
+| Frontend | Next.js (App Router), React 19, TypeScript, Tailwind CSS |
+| Backend | Django 5, Django REST Framework, Python 3.9+, Celery-ready architecture |
+| Database | PostgreSQL 12+ |
+| AI Providers | OpenAI, Anthropic Claude, Google Gemini, LM Studio |
+| Tooling | npm workspaces, PowerShell/Bash scripts, ESLint, PostCSS |
+
+**Execution Flow**
+1. UI sends chat actions to the REST API via the `lib/api.ts` client.
+2. Django processes requests, persists conversations and messages, and delegates AI calls to `chat/ai_service.py`.
+3. Responses are returned alongside updated conversation metadata for rendering in the frontend.
+
+## Project Structure
+
+```
+├── app/                 # Next.js application (App Router)
+├── components/          # Reusable React components (Chat UI, Intelligence tools)
+├── lib/                 # Frontend utilities and API client
+├── backend/
+│   ├── config/          # Django project configuration (settings, urls, asgi/wsgi)
+│   └── chat/            # Conversation domain logic, REST API, AI integration
+├── public/              # Static assets served by Next.js
+├── run*.ps1|sh          # Helper scripts for Windows / Unix shells
+├── package.json         # Combined frontend/back-end orchestration scripts
+└── README.md            # You are here
+```
+
+## Getting Started
+
+### Prerequisites
+- Node.js **18+** and npm
+- Python **3.9+** (with `venv` module)
+- PostgreSQL **12+** running locally or remotely
+
+### Quick Start (recommended)
+
+```bash
+npm install      # installs Node dependencies and ensures backend requirements
+npm run dev      # starts backend (port 8000) and frontend (port 3000)
+```
+
+The orchestration script will:
+1. Kill any previous servers bound to ports 3000/8000.
+2. Create/activate a Python virtual environment inside `backend/.venv`.
+3. Install Python dependencies from `backend/requirements.txt`.
+4. Run Django migrations and bootstrap the database.
+5. Launch the Django API and Next.js dev server with combined logs.
+
+Stop both services with `Ctrl+C` in the same terminal.
+
+### Manual Backend Setup
+
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate        # Windows
+source .venv/bin/activate      # macOS/Linux
+pip install -r requirements.txt
+cp .env.example .env           # then edit with your secrets
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver 0.0.0.0:8000
+```
+
+### Manual Frontend Setup
+
+```bash
+npm install
+cp .env.local.example .env.local   # configure NEXT_PUBLIC_BACKEND_URL
+npm run dev                        # http://localhost:3000
+```
+
+## Configuration
+
+### Backend (`backend/.env`)
+
+```env
+DJANGO_SECRET_KEY=your-secret
+DATABASE_URL=postgres://USER:PASSWORD@HOST:PORT/DB_NAME
+
+AI_PROVIDER=openai                 # openai | anthropic | google | lmstudio
+AI_MODEL=gpt-4o-mini               # provider-specific model identifier
+
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_API_KEY=...
+
+LM_STUDIO_BASE_URL=http://localhost:1234/v1
+LM_STUDIO_API_KEY=lm-studio
+```
+
+### Frontend (`.env.local`)
+
+```env
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+```
+
+> 💡 Environment templates (`backend/.env.example`, `.env.local.example`) are provided—copy and customise them rather than editing defaults.
+
+## Available Commands
+
+### npm Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Spin up backend and frontend together with automatic setup. |
+| `npm run dev:backend` | Start only the Django API (uses virtual environment). |
+| `npm run dev:frontend` | Start only the Next.js app. |
+| `npm run setup:backend` | Recreate the backend virtual environment and install dependencies. |
+
+### Shell Helpers
+
+- `run.ps1` / `run.sh` – Orchestrate full-stack dev environment on Windows or Unix shells.
+- `run_backend.ps1` / `run_backend.sh` – Backend-only launcher.
+- `run_frontend.ps1` / `run_frontend.sh` – Frontend-only launcher.
+
+## API Overview
+
+| Endpoint | Method | Purpose |
+| --- | --- | --- |
+| `/api/conversations/` | GET | List conversations with metadata. |
+| `/api/conversations/` | POST | Create a new conversation. |
+| `/api/conversations/{id}/` | GET | Retrieve one conversation and its messages. |
+| `/api/conversations/{id}/end/` | POST | Finalise a conversation and trigger summary generation. |
+| `/api/messages/send/` | POST | Send a user message and receive an AI response. |
+| `/api/conversations/search/` | GET | Keyword or semantic search across conversations. |
+| `/api/intelligence/query/` | POST | Ask questions about historical chats using semantic reasoning. |
+
+The REST API returns JSON responses. Authentication middleware is ready for extension if you need multi-user support.
+
+## Data Model Summary
+
+**Conversation**
+- `id` – Primary key
+- `title` – Display name
+- `status` – `active` or `ended`
+- `start_timestamp` / `end_timestamp`
+- `ai_summary` – AI-generated synopsis
+- `metadata` – JSON field for provider/model context
+
+**Message**
+- `id`
+- `conversation` – Foreign key to `Conversation`
+- `sender` – `user` or `ai`
+- `content` – Message body
+- `timestamp`
+
+## Testing
+
+```bash
+# Backend
+cd backend
+python manage.py test
+
+# Frontend (add Vitest/Jest as needed)
+npm run test
+```
+
+Consider adding integration tests that exercise the REST API via the frontend client to guard against regressions in AI provider flows.
+
+## Deployment
+
+1. **Backend** – Deploy via Gunicorn + Nginx on a VPS or use a managed platform (Railway, Render, Heroku). Set `DJANGO_SETTINGS_MODULE` to production settings and configure PostgreSQL.
+2. **Frontend** – Build with `npm run build` and deploy to Vercel, Netlify, or any static hosting that supports Next.js server components.
+3. **Environment** – Provide production API keys and secure secrets through environment variables. Ensure HTTPS termination for both layers.
+
+Optional enhancements include Dockerising the stack, enabling Redis-backed Celery workers for background summarisation, and configuring observability (Sentry, OpenTelemetry).
+
+## Development Guidelines
+
+- Follow the existing TypeScript and Python linting conventions. Run `npm run lint` before submitting changes.
+- Keep AI provider logic encapsulated in `backend/chat/ai_service.py`; add adapters rather than branching across the codebase.
+- Use environment variables for secrets—never commit API keys.
+- Prefer small, focused pull requests with updated tests and documentation.
+
+## Contributing
+
+1. Fork the repository and create a feature branch.
+2. Ensure linting/tests pass (`npm run lint`, `python manage.py test`).
+3. Document user-facing changes directly in this README if applicable.
+4. Submit a pull request describing the motivation, testing, and rollout plan.
+
+## License
+
+Distributed under the MIT License. See `LICENSE` for details.
+
+## Support
+
+For questions, feature requests, or bug reports, open an issue or reach out to the maintainers. Product context and requirements remain documented in `prd.md`.
+
+---
+
+Built with ❤️ to make AI conversations smarter, searchable, and shareable.

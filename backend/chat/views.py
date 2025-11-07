@@ -100,6 +100,15 @@ def send_message(request):
         sender='user'
     )
     
+    # Verify user message was saved
+    if not user_message.id:
+        return Response(
+            {"error": "Failed to save user message to database"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    print(f"User message saved with ID: {user_message.id}")
+    
     # Prepare conversation history for AI
     previous_messages = Message.objects.filter(conversation=conversation).order_by('timestamp')
     messages_for_ai = []
@@ -117,9 +126,14 @@ def send_message(request):
             "content": msg.content
         })
     
-    # Generate AI response
-    ai_service = AIService(provider=provider)
-    ai_response = ai_service.generate_response(messages_for_ai)
+    # Generate AI response with error handling
+    try:
+        ai_service = AIService(provider=provider)
+        ai_response = ai_service.generate_response(messages_for_ai)
+    except Exception as e:
+        print(f"AI service error: {str(e)}")
+        # Still save a fallback AI message to maintain conversation integrity
+        ai_response = f"I apologize, but I encountered an error generating a response: {str(e)}"
     
     # Create AI message
     ai_message = Message.objects.create(
@@ -127,6 +141,25 @@ def send_message(request):
         content=ai_response,
         sender='ai'
     )
+    
+    # Verify AI message was saved
+    if not ai_message.id:
+        return Response(
+            {"error": "Failed to save AI message to database"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    print(f"AI message saved with ID: {ai_message.id}")
+    
+    # Double-check messages were persisted
+    saved_user_message = Message.objects.filter(id=user_message.id).first()
+    saved_ai_message = Message.objects.filter(id=ai_message.id).first()
+    
+    if not saved_user_message or not saved_ai_message:
+        return Response(
+            {"error": "Messages were not properly persisted to database"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
     
     return Response({
         "user_message": MessageSerializer(user_message).data,

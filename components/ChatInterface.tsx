@@ -92,11 +92,24 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
 
   const loadConversation = async (id: number) => {
     try {
+      console.log('Loading conversation', id, 'from database...');
       const conversation = await api.getConversation(id);
+      const messageCount = conversation.messages?.length || 0;
+      console.log('✓ Loaded conversation', id, 'with', messageCount, 'messages from database');
+      
       setMessages(conversation.messages || []);
       setConversationTitle(conversation.title);
+      
+      // Log message details for debugging
+      if (messageCount > 0) {
+        console.log('First message:', conversation.messages[0]);
+        console.log('Last message:', conversation.messages[messageCount - 1]);
+      } else {
+        console.warn('⚠️ Conversation has no messages in database');
+      }
     } catch (error) {
       console.error('Failed to load conversation:', error);
+      alert('Failed to load conversation from database');
     }
   };
 
@@ -167,10 +180,39 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       const providerToSend = selectedProvider || undefined;
       console.log('Sending message - conversationId:', currentConversationId, 'content:', userMessageContent, 'provider:', providerToSend);
       const response = await api.sendMessage(currentConversationId, userMessageContent, providerToSend);
+      
+      // Verify that messages have IDs (meaning they were saved to database)
+      if (!response.user_message.id || !response.ai_message.id) {
+        console.error('ERROR: Messages were not saved to database!', response);
+        throw new Error('Messages were not properly saved to database');
+      }
+      
+      console.log('✓ Messages saved to database - User message ID:', response.user_message.id, 'AI message ID:', response.ai_message.id);
+      
+      // Update local state with the saved messages
       setMessages((prev) => [...prev, response.user_message, response.ai_message]);
+      
+      // Verify messages were saved by reloading the conversation
+      // This ensures we're always showing what's actually in the database
+      setTimeout(async () => {
+        try {
+          const verification = await api.getConversation(currentConversationId);
+          console.log('✓ Verification: Conversation has', verification.messages?.length, 'messages in database');
+          
+          // If there's a mismatch, reload from database
+          if (verification.messages && verification.messages.length !== messages.length + 2) {
+            console.warn('Message count mismatch detected, reloading from database');
+            setMessages(verification.messages);
+          }
+        } catch (verifyError) {
+          console.warn('Could not verify message persistence:', verifyError);
+        }
+      }, 500);
+      
     } catch (error) {
       console.error('Failed to send message:', error);
       alert('Failed to send message. Please try again.');
+      setInputMessage(userMessageContent); // Restore the message so user can try again
     } finally {
       setIsLoading(false);
     }

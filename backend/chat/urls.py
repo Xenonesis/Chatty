@@ -3,6 +3,7 @@ URL patterns for chat API.
 """
 from django.urls import path
 from . import views
+from .views_api_settings import manage_ai_settings
 
 urlpatterns = [
     # Conversation endpoints
@@ -16,4 +17,7 @@ urlpatterns = [
     # Intelligence endpoints
     path('intelligence/query/', views.query_intelligence, name='intelligence-query'),
     path('conversations/search/', views.search_conversations, name='conversation-search'),
+    
+    # AI Settings endpoint
+    path('settings/ai/', manage_ai_settings, name='ai-settings'),
 ]

@@ -49,17 +49,25 @@ export default function IntelligenceQuery() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Query Intelligence Panel */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-          🧠 Conversation Intelligence
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">
-          Ask questions about your past conversations and get intelligent answers.
-        </p>
+      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-2xl">🧠</span>
+            </div>
+            Conversation Intelligence
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">
+            Ask questions about your past conversations and get intelligent answers powered by AI.
+          </p>
+        </div>
 
-        <form onSubmit={handleQuerySubmit} className="space-y-4">
+        <form onSubmit={handleQuerySubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               Your Question
             </label>
             <textarea
@@ -67,56 +75,81 @@ export default function IntelligenceQuery() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="e.g., What topics have I discussed the most? What decisions were made in my conversations?"
               rows={4}
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg
-                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                       focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none
+                       placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Search Keywords (Optional)
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+              Filter Keywords (Optional)
             </label>
             <input
               type="text"
               value={searchKeywords}
               onChange={(e) => setSearchKeywords(e.target.value)}
               placeholder="e.g., python, project, meeting"
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                       focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
+                       placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all"
             />
           </div>
 
           <button
             type="submit"
             disabled={!query.trim() || isLoading}
-            className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700
-                     transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700
+                     transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg transform hover:scale-105 disabled:transform-none
+                     flex items-center justify-center gap-2"
           >
-            {isLoading ? 'Analyzing...' : 'Get Answer'}
+            {isLoading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Get Answer
+              </>
+            )}
           </button>
         </form>
 
         {answer && (
-          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              💡 Answer
+          <div className="mt-6 p-5 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-xl animate-slideUp">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-400 rounded-lg flex items-center justify-center shadow-md">
+                <span className="text-lg">💡</span>
+              </div>
+              Answer
             </h3>
-            <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{answer}</p>
+            <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">{answer}</p>
           </div>
         )}
 
         {relevantConversations.length > 0 && (
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-              📚 Relevant Conversations
+          <div className="mt-6 animate-slideUp">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              Relevant Conversations ({relevantConversations.length})
             </h3>
-            <div className="space-y-2">
-              {relevantConversations.map((conv) => (
+            <div className="space-y-3">
+              {relevantConversations.map((conv, index) => (
                 <div
                   key={conv.id}
-                  className="p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg"
+                  className="p-4 bg-white dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl hover:border-blue-400 dark:hover:border-blue-500 transition-all hover:shadow-md animate-slideUp"
+                  style={{ animationDelay: `${index * 0.05}s` }}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <h4 className="font-medium text-gray-900 dark:text-white">{conv.title}</h4>

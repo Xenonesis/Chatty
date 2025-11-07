@@ -117,6 +117,18 @@ class APIClient {
     });
     return this.request<SearchResponse>(`/conversations/search/?${params}`);
   }
+
+  // AI Settings endpoints
+  async getAISettings(): Promise<any> {
+    return this.request('/settings/ai/');
+  }
+
+  async updateAISettings(provider: string, settings: Record<string, string>): Promise<any> {
+    return this.request('/settings/ai/', {
+      method: 'POST',
+      body: JSON.stringify({ provider, settings }),
+    });
+  }
 }
 
 export const api = new APIClient();

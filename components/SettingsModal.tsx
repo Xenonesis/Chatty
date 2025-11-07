@@ -260,6 +260,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         setSaveMessage('Settings saved locally. Note: Backend update failed, changes are temporary.');
       }
 
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new Event('ai-settings-updated'));
+
       setTimeout(() => {
         setSaveMessage('');
         onClose();

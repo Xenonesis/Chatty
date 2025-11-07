@@ -40,13 +40,51 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
   useEffect(() => {
     // Load configured AI providers on mount
     loadConfiguredProviders();
+
+    // Listen for settings changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'ai_provider' || e.key === 'ai_settings') {
+        loadConfiguredProviders();
+      }
+    };
+
+    // Listen for custom event when settings modal closes
+    const handleSettingsUpdate = () => {
+      loadConfiguredProviders();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('ai-settings-updated', handleSettingsUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('ai-settings-updated', handleSettingsUpdate);
+    };
   }, []);
 
   const loadConfiguredProviders = async () => {
     try {
       const response = await api.getConfiguredProviders();
+      console.log('Loaded providers:', response);
       setAvailableProviders(response.providers);
-      setSelectedProvider(response.current_provider || (response.providers[0]?.id || ''));
+      
+      // Check localStorage for user's last selected provider
+      const savedProvider = localStorage.getItem('ai_provider');
+      console.log('Saved provider from localStorage:', savedProvider);
+      console.log('Current provider from backend:', response.current_provider);
+      
+      // Use saved provider if it exists in available providers, otherwise use backend's current provider
+      if (savedProvider && response.providers.some(p => p.id === savedProvider)) {
+        console.log('Using saved provider:', savedProvider);
+        setSelectedProvider(savedProvider);
+      } else if (response.current_provider && response.providers.some(p => p.id === response.current_provider)) {
+        console.log('Using backend current provider:', response.current_provider);
+        setSelectedProvider(response.current_provider);
+      } else {
+        const fallbackProvider = response.providers[0]?.id || '';
+        console.log('Using fallback provider:', fallbackProvider);
+        setSelectedProvider(fallbackProvider);
+      }
     } catch (error) {
       console.error('Failed to load configured providers:', error);
     }
@@ -77,18 +115,36 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim() || isLoading) return;
+    
+    // Ensure we have a valid provider selected
+    if (!selectedProvider) {
+      alert('Please select an AI provider before sending a message.');
+      return;
+    }
 
     // Create conversation if needed
     let currentConversationId = conversationId;
-    if (!currentConversationId) {
+    console.log('Current conversationId:', currentConversationId);
+    
+    if (!currentConversationId || currentConversationId === undefined || currentConversationId === null) {
+      console.log('No conversation exists, creating new one...');
       try {
         const conversation = await api.createConversation();
+        console.log('API returned conversation:', conversation);
+        
+        if (!conversation || !conversation.id) {
+          throw new Error('Invalid conversation response from API');
+        }
+        
         currentConversationId = conversation.id;
+        console.log('Created conversation with ID:', currentConversationId);
         onConversationChange(conversation.id);
         setConversationTitle(conversation.title);
       } catch (error) {
         console.error('Failed to create conversation:', error);
-        alert('Failed to start conversation');
+        alert('Failed to start conversation. Please check if the backend is running.');
+        setIsLoading(false);
+        setInputMessage(inputMessage); // Restore message
         return;
       }
     }
@@ -97,8 +153,20 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
     setInputMessage('');
     setIsLoading(true);
 
+    // Final validation before sending
+    if (!currentConversationId) {
+      console.error('CRITICAL: No conversation ID after creation attempt!');
+      alert('Failed to create conversation. Please try again.');
+      setIsLoading(false);
+      setInputMessage(userMessageContent); // Restore the message
+      return;
+    }
+
     try {
-      const response = await api.sendMessage(currentConversationId, userMessageContent, selectedProvider);
+      // Only send provider if it's actually selected
+      const providerToSend = selectedProvider || undefined;
+      console.log('Sending message - conversationId:', currentConversationId, 'content:', userMessageContent, 'provider:', providerToSend);
+      const response = await api.sendMessage(currentConversationId, userMessageContent, providerToSend);
       setMessages((prev) => [...prev, response.user_message, response.ai_message]);
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -184,7 +252,7 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
 
         {messages.map((message, index) => (
           <div
-            key={message.id}
+            key={`${message.id}-${message.sender}-${index}`}
             className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} animate-slideUp`}
             style={{ animationDelay: `${index * 0.05}s` }}
           >
@@ -281,7 +349,7 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
           />
           <button
             type="submit"
-            disabled={!inputMessage.trim() || isLoading || availableProviders.length === 0}
+            disabled={!inputMessage.trim() || isLoading || availableProviders.length === 0 || !selectedProvider}
             className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 
                      transition-all disabled:opacity-50 disabled:cursor-not-allowed
                      font-semibold shadow-lg transform hover:scale-105 disabled:transform-none

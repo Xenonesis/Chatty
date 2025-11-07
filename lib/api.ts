@@ -76,10 +76,18 @@ class APIClient {
   }
 
   async createConversation(title?: string): Promise<Conversation> {
-    return this.request<Conversation>('/conversations/', {
-      method: 'POST',
-      body: JSON.stringify({ title: title || 'New Conversation' }),
-    });
+    console.log('Creating conversation with title:', title || 'New Conversation');
+    try {
+      const result = await this.request<Conversation>('/conversations/', {
+        method: 'POST',
+        body: JSON.stringify({ title: title || 'New Conversation' }),
+      });
+      console.log('Conversation created successfully:', result);
+      return result;
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      throw error;
+    }
   }
 
   async endConversation(id: number): Promise<{ conversation: Conversation; summary: string }> {
@@ -90,13 +98,21 @@ class APIClient {
 
   // Message endpoints
   async sendMessage(conversationId: number, content: string, provider?: string): Promise<SendMessageResponse> {
+    const body: any = {
+      conversation_id: conversationId,
+      content,
+    };
+    
+    // Only include provider if it's defined and not empty
+    if (provider) {
+      body.provider = provider;
+    }
+    
+    console.log('Sending message with body:', body);
+    
     return this.request<SendMessageResponse>('/messages/send/', {
       method: 'POST',
-      body: JSON.stringify({
-        conversation_id: conversationId,
-        content,
-        provider,
-      }),
+      body: JSON.stringify(body),
     });
   }
 

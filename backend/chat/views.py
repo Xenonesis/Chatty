@@ -64,9 +64,14 @@ def send_message(request):
         "ai_message": Message
     }
     """
+    # Debug logging
+    print(f"Received request data: {request.data}")
+    
     conversation_id = request.data.get('conversation_id')
     content = request.data.get('content')
     provider = request.data.get('provider')
+    
+    print(f"Parsed - conversation_id: {conversation_id}, content: '{content}', provider: {provider}")
     
     if conversation_id is None or not content or not str(content).strip():
         return Response(

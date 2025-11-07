@@ -49,7 +49,8 @@ class ConversationCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Conversation
-        fields = ['title', 'metadata']
+        fields = ['id', 'title', 'metadata', 'start_timestamp', 'status']
+        read_only_fields = ['id', 'start_timestamp', 'status']
 
 
 class MessageCreateSerializer(serializers.ModelSerializer):

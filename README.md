@@ -334,14 +334,101 @@ The REST API returns JSON responses. Authentication middleware is ready for exte
 
 ## Testing
 
+### Automated Testing
+
 ```bash
-# Backend
+# Backend unit tests
 cd backend
 python manage.py test
 
-# Frontend (add Vitest/Jest as needed)
-npm run test
+# Frontend linting
+npm run lint
 ```
+
+### Chat Persistence Verification
+
+To verify that all chat messages are properly saved to the database:
+
+#### Quick Verification (30 seconds)
+
+1. Open the chat application in your browser
+2. Press `F12` to open Developer Console
+3. Send a message in the chat
+4. Look for these lines in the console:
+
+   ```text
+   ✓ Messages saved to database - User message ID: X, AI message ID: Y
+   ✓ Verification: Conversation has N messages in database
+   ```
+
+#### Database Integrity Check
+
+```bash
+cd backend
+python manage.py verify_database
+```
+
+**Expected output:**
+
+```text
+======================================================================
+DATABASE INTEGRITY VERIFICATION
+======================================================================
+
+📊 Overall Statistics:
+   Total Conversations: X
+   Total Messages: Y
+
+📝 Conversation Analysis:
+   ✓ Conversations with messages: X
+   ⚠ Conversations without messages: 0
+
+✅ DATABASE INTEGRITY: EXCELLENT
+   All conversations have messages and data is consistent
+======================================================================
+```
+
+#### Automated Test Script
+
+```powershell
+# Run automated persistence test
+./test_chat_persistence.ps1
+```
+
+**Expected output:**
+
+```text
+✅ SUCCESS: All messages are being saved to database!
+   Conversation ID: X
+   Total Messages: Y
+   Database: backend/db.sqlite3
+```
+
+### Verification Layers
+
+The system implements multiple verification layers to ensure message persistence:
+
+1. **Backend Creation**: Verifies message IDs after database creation
+2. **Database Double-Check**: Queries database to confirm persistence
+3. **Frontend Verification**: Confirms messages have database IDs in API response
+4. **Automatic Re-verification**: Reloads conversation to verify persistence
+5. **Management Command**: Manual database integrity verification
+
+### Troubleshooting
+
+#### If messages aren't being saved
+
+1. **Check backend is running**: Visit `http://localhost:8000/api/conversations/`
+2. **Verify database exists**: Check `backend/db.sqlite3` file exists
+3. **Run migrations**: `cd backend && python manage.py migrate`
+4. **Check backend logs**: Look for errors in Django server terminal
+5. **Run verification**: `python manage.py verify_database`
+
+#### Common Issues
+
+- **"Failed to save message to database"**: Database permission or space issue
+- **Empty conversations**: Normal if no messages sent yet
+- **Message count mismatch**: Frontend will auto-correct by reloading
 
 Consider adding integration tests that exercise the REST API via the frontend client to guard against regressions in AI provider flows.
 

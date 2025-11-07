@@ -12,12 +12,13 @@ npm run dev
 ```
 
 **What it does:**
-1. Runs `npm run setup:backend` to prepare the Python environment
-2. Starts both servers concurrently with color-coded output:
+1. Runs `npm run kill:ports` to clear ports 3000 and 8000
+2. Runs `npm run setup:backend` to prepare the Python environment
+3. Starts both servers concurrently with color-coded output:
    - 🟦 **Backend** (Django) on `http://localhost:8000`
    - 🟩 **Frontend** (Next.js) on `http://localhost:3000`
-3. Shows logs from both servers in real-time
-4. Stops both servers when you press `Ctrl+C`
+4. Shows logs from both servers in real-time
+5. Stops both servers when you press `Ctrl+C`
 
 **First Time Setup:**
 ```bash
@@ -73,6 +74,37 @@ npm run setup:backend
 - First time setup
 - After pulling changes that update Python dependencies
 - If backend dependencies are missing
+
+---
+
+### `npm run kill:ports`
+Kills any processes running on ports 3000 and 8000.
+
+```bash
+npm run kill:ports
+```
+
+**What it does:**
+1. Finds processes using port 8000 (Django backend)
+2. Finds processes using port 3000 (Next.js frontend)
+3. Forcefully terminates those processes
+4. Works cross-platform (Windows, Linux, Mac)
+
+**When to use:**
+- Automatically runs when you use `npm run dev`
+- Manually if you have orphaned server processes
+- When you get "port already in use" errors
+
+**Example output:**
+```
+🧹 Cleaning up previous server instances...
+🔍 Checking port 8000 on Windows...
+   🔪 Killing process 1234 on port 8000...
+   ✅ Port 8000 cleared
+🔍 Checking port 3000 on Windows...
+   ✅ Port 3000 is free
+✅ Port cleanup complete!
+```
 
 ---
 

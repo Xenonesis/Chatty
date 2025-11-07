@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "npm run setup:backend && concurrently \"npm run dev:backend\" \"npm run dev:frontend\" --names \"backend,frontend\" --prefix-colors \"blue,green\"",
+    "dev": "npm run kill:ports && npm run setup:backend && concurrently \"npm run dev:backend\" \"npm run dev:frontend\" --names \"backend,frontend\" --prefix-colors \"blue,green\"",
     "dev:frontend": "next dev",
     "dev:backend": "python backend/run_server.py",
     "setup:backend": "node setup_backend.js",
+    "kill:ports": "node kill_ports.js",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

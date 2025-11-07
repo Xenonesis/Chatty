@@ -7,6 +7,12 @@ import os
 import sys
 import platform
 
+# Fix Windows console encoding for emoji support
+if platform.system() == 'Windows':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 # Activate virtual environment
 backend_dir = os.path.dirname(os.path.abspath(__file__))
 venv_dir = os.path.join(backend_dir, 'venv')

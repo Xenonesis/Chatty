@@ -19,6 +19,7 @@ npm run dev    # Start both backend and frontend
 ```
 
 This single command will:
+- ✅ Kill any previous server instances on ports 3000 & 8000
 - ✅ Set up Python virtual environment (if needed)
 - ✅ Install Python dependencies automatically
 - ✅ Run database migrations

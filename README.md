@@ -8,6 +8,60 @@ A full-stack web application that enables real-time conversations with Large Lan
 ![Next.js](https://img.shields.io/badge/next.js-16.0-black.svg)
 ![React](https://img.shields.io/badge/react-19.2-blue.svg)
 
+## 🚀 Quick Start
+
+### Run Everything with One Command
+
+**Using npm (Recommended):**
+```bash
+npm install    # First time only - install dependencies
+npm run dev    # Start both backend and frontend
+```
+
+This single command will:
+- ✅ Set up Python virtual environment (if needed)
+- ✅ Install Python dependencies automatically
+- ✅ Run database migrations
+- ✅ Start Django backend on `http://localhost:8000`
+- ✅ Start Next.js frontend on `http://localhost:3000`
+- ✅ Show color-coded logs from both servers
+- ✅ Stop both servers with `Ctrl+C`
+
+**Alternative - Using shell scripts:**
+```powershell
+.\run.ps1          # Windows
+./run.sh           # Linux/Mac
+```
+
+### Run Backend or Frontend Separately
+
+**Using npm:**
+```bash
+npm run dev:backend   # Backend only (Django)
+npm run dev:frontend  # Frontend only (Next.js)
+npm run setup:backend # Setup backend environment manually
+```
+
+**Using shell scripts:**
+```powershell
+# Windows
+.\run_backend.ps1
+.\run_frontend.ps1
+
+# Linux/Mac
+./run_backend.sh
+./run_frontend.sh
+```
+
+### Prerequisites
+
+Before running `npm run dev`, ensure you have:
+- ✅ **Node.js 18+** - [Download](https://nodejs.org/)
+- ✅ **Python 3.9+** - [Download](https://www.python.org/downloads/)
+- ✅ **PostgreSQL 12+** - [Download](https://www.postgresql.org/download/) (running and configured)
+
+See [SETUP_GUIDE.md](SETUP_GUIDE.md) for detailed installation instructions.
+
 ## ✨ Features
 
 ### Core Features

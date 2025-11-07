@@ -11,6 +11,7 @@ interface ChatInterfaceProps {
 interface AIProvider {
   id: string;
   name: string;
+  model?: string | null;
 }
 
 export default function ChatInterface({ conversationId, onConversationChange }: ChatInterfaceProps) {
@@ -240,23 +241,30 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm">
         <div className="flex gap-3">
           {availableProviders.length > 0 && (
-            <select
-              value={selectedProvider}
-              onChange={(e) => setSelectedProvider(e.target.value)}
-              disabled={isLoading}
-              className="px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl 
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                       disabled:opacity-50 disabled:cursor-not-allowed transition-all
-                       font-medium text-sm min-w-[200px]"
-              title="Select AI Provider"
-            >
-              {availableProviders.map((provider) => (
-                <option key={provider.id} value={provider.id}>
-                  {provider.name}
-                </option>
-              ))}
-            </select>
+            <div className="flex flex-col gap-1">
+              <select
+                value={selectedProvider}
+                onChange={(e) => setSelectedProvider(e.target.value)}
+                disabled={isLoading}
+                className="px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl 
+                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                         disabled:opacity-50 disabled:cursor-not-allowed transition-all
+                         font-medium text-sm min-w-[200px]"
+                title="Select AI Provider"
+              >
+                {availableProviders.map((provider) => (
+                  <option key={provider.id} value={provider.id}>
+                    {provider.name}
+                  </option>
+                ))}
+              </select>
+              {availableProviders.find(p => p.id === selectedProvider)?.model && (
+                <span className="text-xs text-gray-500 dark:text-gray-400 px-1">
+                  Model: {availableProviders.find(p => p.id === selectedProvider)?.model}
+                </span>
+              )}
+            </div>
           )}
           <input
             type="text"
@@ -286,9 +294,20 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
           </button>
         </div>
         {availableProviders.length === 0 && (
-          <p className="text-xs text-red-500 dark:text-red-400 mt-2">
-            No AI providers configured. Please configure an AI provider in settings.
-          </p>
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mt-2">
+            <div className="flex items-start gap-2">
+              <span className="text-yellow-600 dark:text-yellow-400 text-lg">⚠️</span>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-1">
+                  No AI providers configured
+                </p>
+                <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                  Please configure at least one AI provider (OpenAI, Anthropic, Google, or LM Studio) 
+                  in the settings to start chatting.
+                </p>
+              </div>
+            </div>
+          </div>
         )}
       </form>
     </div>

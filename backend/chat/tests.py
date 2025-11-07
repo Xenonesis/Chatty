@@ -6,6 +6,7 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 from rest_framework import status
 from unittest.mock import patch, MagicMock
+from django.conf import settings
 from .models import Conversation, Message
 
 
@@ -146,3 +147,85 @@ class ConversationAPITest(APITestCase):
         
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertIn('error', response.data)
+
+
+class AIProviderSettingsTest(APITestCase):
+    """Test AI provider settings endpoints."""
+    
+    def test_get_configured_providers_with_all_configured(self):
+        """Test getting configured providers when all providers are configured."""
+        with patch.object(settings, 'OPENAI_API_KEY', 'test-openai-key'), \
+             patch.object(settings, 'ANTHROPIC_API_KEY', 'test-anthropic-key'), \
+             patch.object(settings, 'GOOGLE_API_KEY', 'test-google-key'), \
+             patch.object(settings, 'LM_STUDIO_BASE_URL', 'http://localhost:1234/v1'):
+            
+            response = self.client.get('/api/settings/ai/providers/')
+            
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertIn('providers', response.data)
+            self.assertIn('current_provider', response.data)
+            
+            providers = response.data['providers']
+            self.assertEqual(len(providers), 4)
+            
+            provider_ids = [p['id'] for p in providers]
+            self.assertIn('openai', provider_ids)
+            self.assertIn('anthropic', provider_ids)
+            self.assertIn('google', provider_ids)
+            self.assertIn('lmstudio', provider_ids)
+    
+    def test_get_configured_providers_with_none_configured(self):
+        """Test getting configured providers when none are configured."""
+        with patch.object(settings, 'OPENAI_API_KEY', ''), \
+             patch.object(settings, 'ANTHROPIC_API_KEY', ''), \
+             patch.object(settings, 'GOOGLE_API_KEY', ''), \
+             patch.object(settings, 'LM_STUDIO_BASE_URL', ''):
+            
+            response = self.client.get('/api/settings/ai/providers/')
+            
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertIn('providers', response.data)
+            
+            providers = response.data['providers']
+            self.assertEqual(len(providers), 0)
+            self.assertIsNone(response.data['current_provider'])
+    
+    def test_get_configured_providers_with_only_openai(self):
+        """Test getting configured providers when only OpenAI is configured."""
+        with patch.object(settings, 'OPENAI_API_KEY', 'test-openai-key'), \
+             patch.object(settings, 'ANTHROPIC_API_KEY', ''), \
+             patch.object(settings, 'GOOGLE_API_KEY', ''), \
+             patch.object(settings, 'LM_STUDIO_BASE_URL', ''), \
+             patch.object(settings, 'AI_PROVIDER', 'openai'), \
+             patch.object(settings, 'AI_MODEL', 'gpt-4'):
+            
+            response = self.client.get('/api/settings/ai/providers/')
+            
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            
+            providers = response.data['providers']
+            self.assertEqual(len(providers), 1)
+            self.assertEqual(providers[0]['id'], 'openai')
+            self.assertEqual(providers[0]['name'], 'OpenAI (GPT-4, GPT-3.5)')
+            self.assertEqual(providers[0]['model'], 'gpt-4')
+            self.assertEqual(response.data['current_provider'], 'openai')
+    
+    def test_get_configured_providers_with_lmstudio_only(self):
+        """Test getting configured providers when only LM Studio is configured."""
+        with patch.object(settings, 'OPENAI_API_KEY', ''), \
+             patch.object(settings, 'ANTHROPIC_API_KEY', ''), \
+             patch.object(settings, 'GOOGLE_API_KEY', ''), \
+             patch.object(settings, 'LM_STUDIO_BASE_URL', 'http://localhost:1234/v1'), \
+             patch.object(settings, 'AI_PROVIDER', 'lmstudio'), \
+             patch.object(settings, 'AI_MODEL', 'local-model'):
+            
+            response = self.client.get('/api/settings/ai/providers/')
+            
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            
+            providers = response.data['providers']
+            self.assertEqual(len(providers), 1)
+            self.assertEqual(providers[0]['id'], 'lmstudio')
+            self.assertEqual(providers[0]['name'], 'LM Studio (Local)')
+            self.assertEqual(providers[0]['model'], 'local-model')
+            self.assertEqual(response.data['current_provider'], 'lmstudio')

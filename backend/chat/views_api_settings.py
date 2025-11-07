@@ -16,8 +16,8 @@ def get_configured_providers(request):
     Returns:
     {
         "providers": [
-            {"id": "openai", "name": "OpenAI (GPT-4, GPT-3.5)"},
-            {"id": "anthropic", "name": "Anthropic (Claude)"},
+            {"id": "openai", "name": "OpenAI (GPT-4, GPT-3.5)", "model": "gpt-4"},
+            {"id": "anthropic", "name": "Anthropic (Claude)", "model": "claude-3-opus"},
             ...
         ],
         "current_provider": "openai"
@@ -29,31 +29,35 @@ def get_configured_providers(request):
     if settings.OPENAI_API_KEY:
         configured_providers.append({
             "id": "openai",
-            "name": "OpenAI (GPT-4, GPT-3.5)"
+            "name": "OpenAI (GPT-4, GPT-3.5)",
+            "model": settings.AI_MODEL if settings.AI_PROVIDER == "openai" else None
         })
     
     if settings.ANTHROPIC_API_KEY:
         configured_providers.append({
             "id": "anthropic",
-            "name": "Anthropic (Claude)"
+            "name": "Anthropic (Claude)",
+            "model": settings.AI_MODEL if settings.AI_PROVIDER == "anthropic" else None
         })
     
     if settings.GOOGLE_API_KEY:
         configured_providers.append({
             "id": "google",
-            "name": "Google (Gemini)"
+            "name": "Google (Gemini)",
+            "model": settings.AI_MODEL if settings.AI_PROVIDER == "google" else None
         })
     
     # LM Studio is always available if base URL is configured
     if settings.LM_STUDIO_BASE_URL:
         configured_providers.append({
             "id": "lmstudio",
-            "name": "LM Studio (Local)"
+            "name": "LM Studio (Local)",
+            "model": settings.AI_MODEL if settings.AI_PROVIDER == "lmstudio" else None
         })
     
     return Response({
         "providers": configured_providers,
-        "current_provider": settings.AI_PROVIDER
+        "current_provider": settings.AI_PROVIDER if configured_providers else None
     }, status=status.HTTP_200_OK)
 
 

@@ -362,6 +362,15 @@ Optional enhancements include Dockerising the stack, enabling Redis-backed Celer
 
 ## Contributing
 
+We welcome contributions from the community! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on:
+
+- How to report issues
+- Development process and workflow
+- Code style guidelines
+- Pull request process
+
+Quick start for contributors:
+
 1. Fork the repository and create a feature branch.
 2. Ensure linting/tests pass (`npm run lint`, `python manage.py test`).
 3. Document user-facing changes directly in this README if applicable.
@@ -369,11 +378,11 @@ Optional enhancements include Dockerising the stack, enabling Redis-backed Celer
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Support
 
-For questions, feature requests, or bug reports, open an issue or reach out to the maintainers. Product context and requirements remain documented in `prd.md`.
+For questions, feature requests, or bug reports, open an issue or reach out to the maintainers.
 
 ---
 

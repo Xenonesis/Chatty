@@ -63,6 +63,11 @@ class APIClient {
       throw new Error(error.error || `API Error: ${response.status}`);
     }
 
+    // Handle empty responses (e.g., 204 No Content from DELETE)
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return {} as T;
+    }
+
     return response.json();
   }
 
@@ -95,6 +100,12 @@ class APIClient {
   async endConversation(id: number): Promise<{ conversation: Conversation; summary: string }> {
     return this.request(`/conversations/${id}/end/`, {
       method: 'POST',
+    });
+  }
+
+  async deleteConversation(id: number): Promise<void> {
+    return this.request(`/conversations/${id}/`, {
+      method: 'DELETE',
     });
   }
 

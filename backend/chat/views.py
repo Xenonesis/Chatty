@@ -39,9 +39,10 @@ class ConversationListView(generics.ListCreateAPIView):
             conversation.save()
 
 
-class ConversationDetailView(generics.RetrieveAPIView):
+class ConversationDetailView(generics.RetrieveDestroyAPIView):
     """
     GET: Retrieve detailed conversation including all messages
+    DELETE: Delete a conversation and all its messages
     """
     queryset = Conversation.objects.all()
     serializer_class = ConversationDetailSerializer

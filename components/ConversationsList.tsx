@@ -6,7 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Search, Calendar, Clock, MessageCircle, Eye } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { RefreshCw, Search, Calendar, Clock, MessageCircle, Eye, Trash2, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 
 interface ConversationsListProps {
   onSelectConversation: (id: number) => void;
@@ -18,6 +26,10 @@ export default function ConversationsList({ onSelectConversation }: Conversation
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<{ id: number; title: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     loadConversations();
@@ -61,6 +73,52 @@ export default function ConversationsList({ onSelectConversation }: Conversation
     }
   };
 
+  const openDeleteDialog = (id: number, title: string) => {
+    setConversationToDelete({ id, title });
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!conversationToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await api.deleteConversation(conversationToDelete.id);
+      
+      // If the deleted conversation was selected, clear the selection
+      if (selectedConv?.id === conversationToDelete.id) {
+        setSelectedConv(null);
+      }
+      
+      // Reload conversations
+      await loadConversations();
+      
+      // Show success notification
+      setNotification({
+        type: 'success',
+        message: `"${conversationToDelete.title}" deleted successfully`
+      });
+      
+      // Auto-hide notification after 3 seconds
+      setTimeout(() => setNotification(null), 3000);
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      
+      // Show error notification
+      setNotification({
+        type: 'error',
+        message: 'Failed to delete conversation. Please try again.'
+      });
+      
+      // Auto-hide notification after 5 seconds
+      setTimeout(() => setNotification(null), 5000);
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setConversationToDelete(null);
+    }
+  };
+
   const formatDuration = (seconds?: number) => {
     if (!seconds) return 'N/A';
     const minutes = Math.floor(seconds / 60);
@@ -72,6 +130,68 @@ export default function ConversationsList({ onSelectConversation }: Conversation
   };
 
   return (
+    <>
+      {/* Notification Toast */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 animate-slideDown">
+          <Card className={`shadow-lg ${notification.type === 'success' ? 'border-green-500' : 'border-red-500'}`}>
+            <CardContent className="flex items-center gap-3 p-4">
+              {notification.type === 'success' ? (
+                <CheckCircle className="w-5 h-5 text-green-500" />
+              ) : (
+                <XCircle className="w-5 h-5 text-red-500" />
+              )}
+              <p className="font-medium">{notification.message}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Delete Conversation
+            </DialogTitle>
+            <DialogDescription className="pt-4">
+              Are you sure you want to delete{' '}
+              <span className="font-semibold text-foreground">"{conversationToDelete?.title}"</span>?
+              <br />
+              <br />
+              This will permanently delete the conversation and all its messages. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Conversations List */}
       <div className="lg:col-span-2">
@@ -191,6 +311,16 @@ export default function ConversationsList({ onSelectConversation }: Conversation
                       <Eye className="w-4 h-4" />
                       Details
                     </Button>
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDeleteDialog(conversation.id, conversation.title);
+                      }}
+                      variant="outline"
+                      className="hover:bg-destructive hover:text-destructive-foreground"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </CardContent>
                 </Card>
@@ -281,5 +411,6 @@ export default function ConversationsList({ onSelectConversation }: Conversation
         </Card>
       </div>
     </div>
+    </>
   );
 }

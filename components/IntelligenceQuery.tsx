@@ -11,7 +11,11 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Brain, Search, Zap, Lightbulb, Loader2, MessageCircle, Calendar, CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react';
 
-export default function IntelligenceQuery() {
+interface IntelligenceQueryProps {
+  onSelectConversation?: (id: number) => void;
+}
+
+export default function IntelligenceQuery({ onSelectConversation }: IntelligenceQueryProps) {
   const [query, setQuery] = useState('');
   const [searchKeywords, setSearchKeywords] = useState('');
   const [answer, setAnswer] = useState('');
@@ -159,8 +163,9 @@ export default function IntelligenceQuery() {
                 {relevantConversations.map((conv, index) => (
                   <Card
                     key={conv.id}
-                    className="hover:border-primary transition-all hover:shadow-md animate-slideUp"
+                    className="hover:border-primary transition-all hover:shadow-md animate-slideUp cursor-pointer"
                     style={{ animationDelay: `${index * 0.05}s` }}
+                    onClick={() => onSelectConversation?.(conv.id)}
                   >
                     <CardContent className="p-3 sm:p-4">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-0 mb-1">
@@ -171,10 +176,22 @@ export default function IntelligenceQuery() {
                         </span>
                       </div>
                       {conv.ai_summary && (
-                        <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
+                        <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-2">
                           {conv.ai_summary}
                         </p>
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectConversation?.(conv.id);
+                        }}
+                      >
+                        <MessageCircle className="w-3 h-3 mr-1" />
+                        View Full Conversation
+                      </Button>
                     </CardContent>
                   </Card>
                 ))}
@@ -248,7 +265,11 @@ export default function IntelligenceQuery() {
               </h3>
               <div className="space-y-2 sm:space-y-3 max-h-80 sm:max-h-96 overflow-y-auto">
                 {searchResults.map((conv) => (
-                  <Card key={conv.id} className="hover:border-primary transition-all">
+                  <Card 
+                    key={conv.id} 
+                    className="hover:border-primary transition-all cursor-pointer"
+                    onClick={() => onSelectConversation?.(conv.id)}
+                  >
                     <CardContent className="p-3 sm:p-4">
                       <div className="flex items-start justify-between mb-1.5 sm:mb-2 gap-2">
                         <h4 className="font-semibold text-sm sm:text-base truncate flex-1">{conv.title}</h4>
@@ -272,7 +293,7 @@ export default function IntelligenceQuery() {
                         </p>
                       )}
                       {conv.metadata?.topics && (
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1 mb-2">
                           {conv.metadata.topics.slice(0, 3).map((topic: string, idx: number) => (
                             <Badge key={idx} variant="outline" className="text-[10px] sm:text-xs">
                               {topic}
@@ -280,6 +301,18 @@ export default function IntelligenceQuery() {
                           ))}
                         </div>
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectConversation?.(conv.id);
+                        }}
+                      >
+                        <MessageCircle className="w-3 h-3 mr-1" />
+                        Open Conversation
+                      </Button>
                     </CardContent>
                   </Card>
                 ))}

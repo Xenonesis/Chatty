@@ -15,6 +15,7 @@ class Conversation(models.Model):
         ('ended', 'Ended'),
     ]
     
+    user_id = models.CharField(max_length=255, default='default_user', db_index=True)
     title = models.CharField(max_length=255, blank=True, null=True)
     start_timestamp = models.DateTimeField(auto_now_add=True)
     end_timestamp = models.DateTimeField(blank=True, null=True)
@@ -27,6 +28,7 @@ class Conversation(models.Model):
         indexes = [
             models.Index(fields=['-start_timestamp']),
             models.Index(fields=['status']),
+            models.Index(fields=['user_id', '-start_timestamp']),
         ]
     
     def __str__(self):

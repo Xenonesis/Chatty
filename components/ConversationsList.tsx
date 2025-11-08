@@ -14,7 +14,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { RefreshCw, Search, Calendar, Clock, MessageCircle, Eye, Trash2, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { RefreshCw, Search, Calendar, Clock, MessageCircle, Eye, Trash2, AlertTriangle, CheckCircle, XCircle, X, Loader2, Brain } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 interface ConversationsListProps {
   onSelectConversation: (id: number) => void;
@@ -24,6 +26,8 @@ export default function ConversationsList({ onSelectConversation }: Conversation
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [filteredConversations, setFilteredConversations] = useState<Conversation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [useSemanticSearch, setUseSemanticSearch] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -36,30 +40,112 @@ export default function ConversationsList({ onSelectConversation }: Conversation
   }, []);
 
   useEffect(() => {
+    // Unified search - local + AI automatically
+    if (!conversations || conversations.length === 0) {
+      setFilteredConversations([]);
+      return;
+    }
+
     if (searchQuery.trim() === '') {
       setFilteredConversations(conversations);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = conversations.filter(
-        (conv) =>
-          conv.title.toLowerCase().includes(query) ||
-          conv.ai_summary?.toLowerCase().includes(query)
-      );
-      setFilteredConversations(filtered);
+      setIsSearching(false);
+      return;
     }
+
+    const query = searchQuery.toLowerCase();
+    console.log('🔍 Unified Search - Query:', query);
+    
+    // Step 1: Local search (instant)
+    const localFiltered = conversations.filter((conv) => {
+      const title = conv.title?.toLowerCase() || '';
+      const summary = conv.ai_summary?.toLowerCase() || '';
+      const topics = conv.metadata?.topics?.join(' ').toLowerCase() || '';
+      const status = conv.status?.toLowerCase() || '';
+      
+      let messageContent = '';
+      if (conv.messages && Array.isArray(conv.messages)) {
+        messageContent = conv.messages
+          .map(m => m.content?.toLowerCase() || '')
+          .join(' ');
+      }
+      
+      const matches = 
+        title.includes(query) || 
+        summary.includes(query) || 
+        topics.includes(query) ||
+        status.includes(query) ||
+        messageContent.includes(query);
+      
+      if (matches) {
+        const matchedIn = [];
+        if (title.includes(query)) matchedIn.push('title');
+        if (summary.includes(query)) matchedIn.push('summary');
+        if (topics.includes(query)) matchedIn.push('topics');
+        if (messageContent.includes(query)) matchedIn.push('messages');
+        console.log('✓ Local match:', conv.title, '| Found in:', matchedIn.join(', '));
+      }
+      
+      return matches;
+    });
+    
+    console.log(`📊 Local results: ${localFiltered.length} of ${conversations.length}`);
+    setFilteredConversations(localFiltered);
+    
+    // Step 2: Enhance with AI automatically (debounced)
+    const timeoutId = setTimeout(() => {
+      performAISearch(query, localFiltered);
+    }, 500); // Wait 500ms after user stops typing
+    
+    return () => clearTimeout(timeoutId);
   }, [searchQuery, conversations]);
 
   const loadConversations = async () => {
     try {
       setIsLoading(true);
       const data = await api.getConversations();
-      setConversations(data);
-      setFilteredConversations(data);
+      console.log('Loaded conversations:', data?.length || 0, 'conversations');
+      setConversations(data || []);
+      setFilteredConversations(data || []);
     } catch (error) {
       console.error('Failed to load conversations:', error);
+      setConversations([]);
+      setFilteredConversations([]);
       alert('Failed to load conversations');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const performAISearch = async (query: string, localResults: Conversation[]) => {
+    if (!query.trim() || query.length < 2) {
+      return; // Skip AI search for very short queries
+    }
+
+    setIsSearching(true);
+    try {
+      console.log('🤖 AI Enhancement - Query:', query);
+      const response = await api.searchConversations(query, true);
+      console.log('🤖 AI results:', response.results.length);
+      
+      // Merge AI results with local results
+      const semanticIds = new Set(response.results.map(r => r.id));
+      const localIds = new Set(localResults.map(r => r.id));
+      
+      // Combine: AI results first (ranked by relevance) + local results not in AI
+      const combined = [
+        ...response.results,
+        ...localResults.filter(conv => !semanticIds.has(conv.id))
+      ];
+      
+      console.log(`📊 Combined: ${response.results.length} AI + ${localResults.length} local = ${combined.length} total`);
+      setFilteredConversations(combined);
+      
+    } catch (error) {
+      console.error('AI search failed:', error);
+      // Keep local results if AI search fails
+      console.log('📊 Using local results only');
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -206,6 +292,11 @@ export default function ConversationsList({ onSelectConversation }: Conversation
                 </CardTitle>
                 <CardDescription className="mt-1 text-xs sm:text-sm">
                   {filteredConversations?.length || 0} conversation{filteredConversations?.length !== 1 ? 's' : ''} found
+                  {searchQuery && (
+                    <span className="ml-2 text-muted-foreground">
+                      (searching for "{searchQuery}")
+                    </span>
+                  )}
                 </CardDescription>
               </div>
               <Button
@@ -220,17 +311,55 @@ export default function ConversationsList({ onSelectConversation }: Conversation
             </div>
           </CardHeader>
 
-          {/* Search */}
+          {/* Unified Search with Auto AI Enhancement */}
           <CardContent className="p-4 sm:p-6">
-            <div className="relative mb-4 sm:mb-6">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
-              <Input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by title or summary..."
-                className="pl-8 sm:pl-10 text-sm sm:text-base"
-              />
+            <div className="space-y-3 mb-4 sm:mb-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSearchQuery(value);
+                  }}
+                  placeholder="Search everywhere: title, summary, topics, messages..."
+                  className="pl-8 sm:pl-10 pr-32 text-sm sm:text-base"
+                />
+                {searchQuery && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                    {isSearching && (
+                      <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin text-primary" />
+                    )}
+                    <Badge variant="secondary" className="text-xs">
+                      {filteredConversations.length}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 hover:bg-muted"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setFilteredConversations(conversations);
+                      }}
+                      title="Clear search"
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {searchQuery && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Brain className="w-3 h-3" />
+                  <span>
+                    {isSearching 
+                      ? 'Enhancing with AI...' 
+                      : 'Searching everywhere with AI enhancement'}
+                  </span>
+                </div>
+              )}
             </div>
 
           {isLoading ? (

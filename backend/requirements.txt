@@ -11,3 +11,4 @@ sentence-transformers>=2.2.2
 numpy>=1.26.3
 scikit-learn>=1.4.0
 reportlab>=4.0.4
+schedule>=1.2.0

@@ -29,7 +29,11 @@ class ConversationListView(generics.ListCreateAPIView):
     GET: List all conversations with basic metadata
     POST: Create a new conversation
     """
-    queryset = Conversation.objects.all()
+    
+    def get_queryset(self):
+        """Filter conversations by user_id."""
+        user_id = self.request.query_params.get('user_id', 'default_user')
+        return Conversation.objects.filter(user_id=user_id)
     
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -38,7 +42,8 @@ class ConversationListView(generics.ListCreateAPIView):
     
     def perform_create(self, serializer):
         """Create a new conversation with auto-generated title if needed."""
-        conversation = serializer.save()
+        user_id = self.request.data.get('user_id', 'default_user')
+        conversation = serializer.save(user_id=user_id)
         if not conversation.title:
             conversation.title = f"Conversation {conversation.id}"
             conversation.save()
@@ -315,12 +320,13 @@ def end_conversation(request, pk):
 @api_view(['POST'])
 def query_intelligence(request):
     """
-    POST: Query AI about past conversations
+    POST: Query AI about past conversations with semantic search
     
     Request body:
     {
         "query": str,
-        "search_keywords": str (optional)
+        "search_keywords": str (optional),
+        "user_id": str (optional)
     }
     
     Returns:
@@ -329,8 +335,11 @@ def query_intelligence(request):
         "relevant_conversations": List[Conversation]
     }
     """
+    from .vector_search_service import VectorSearchService
+    
     query = request.data.get('query')
     search_keywords = request.data.get('search_keywords', '')
+    user_id = request.data.get('user_id', 'default_user')
     
     if not query:
         return Response(
@@ -338,20 +347,26 @@ def query_intelligence(request):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    # Get relevant conversations
-    conversations = Conversation.objects.filter(status='ended')
+    # Use vector search for semantic matching
+    vector_search = VectorSearchService()
+    search_results = vector_search.semantic_search(query, user_id=user_id, limit=10)
     
-    # Apply keyword filter if provided
+    # Apply additional keyword filter if provided
     if search_keywords:
-        conversations = conversations.filter(
-            Q(title__icontains=search_keywords) |
-            Q(ai_summary__icontains=search_keywords) |
-            Q(messages__content__icontains=search_keywords)
-        ).distinct()
+        keyword_lower = search_keywords.lower()
+        search_results = [
+            r for r in search_results
+            if (r['title'] and keyword_lower in r['title'].lower()) or
+               (r['ai_summary'] and keyword_lower in r['ai_summary'].lower())
+        ]
+    
+    # Get conversation objects
+    conversation_ids = [r['id'] for r in search_results[:10]]
+    conversations = Conversation.objects.filter(id__in=conversation_ids)
     
     # Prepare conversation data for AI
     conversations_data = []
-    for conv in conversations[:10]:  # Limit to 10 most recent
+    for conv in conversations:
         messages = Message.objects.filter(conversation=conv).order_by('timestamp')
         conversations_data.append({
             'id': conv.id,
@@ -382,14 +397,18 @@ def search_conversations(request):
     Query params:
     - q: search query
     - semantic: use semantic search (true/false)
+    - user_id: user ID to filter conversations (optional)
     
     Returns:
     {
         "results": List[Conversation]
     }
     """
+    from .vector_search_service import VectorSearchService
+    
     query = request.GET.get('q', '')
     use_semantic = request.GET.get('semantic', 'false').lower() == 'true'
+    user_id = request.GET.get('user_id', 'default_user')
     
     if not query:
         return Response(
@@ -397,33 +416,22 @@ def search_conversations(request):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    conversations = Conversation.objects.all()
-    
     if use_semantic:
-        # Semantic search using AI
-        conversations_data = []
-        for conv in conversations:
-            messages = Message.objects.filter(conversation=conv).order_by('timestamp')
-            conversations_data.append({
-                'id': conv.id,
-                'title': conv.title,
-                'ai_summary': conv.ai_summary,
-                'messages': [
-                    {'sender': msg.sender, 'content': msg.content}
-                    for msg in messages
-                ]
-            })
-        
-        ai_service = AIService()
-        results = ai_service.semantic_search(query, conversations_data)
+        # Use vector-based semantic search
+        vector_search = VectorSearchService()
+        search_results = vector_search.semantic_search(query, user_id=user_id, limit=20)
         
         # Get conversation objects
-        result_ids = [r['id'] for r in results]
+        result_ids = [r['id'] for r in search_results]
         conversations = Conversation.objects.filter(id__in=result_ids)
+        
+        # Preserve order from search results
+        conversations_dict = {conv.id: conv for conv in conversations}
+        conversations = [conversations_dict[rid] for rid in result_ids if rid in conversations_dict]
         
     else:
         # Keyword search
-        conversations = conversations.filter(
+        conversations = Conversation.objects.filter(user_id=user_id).filter(
             Q(title__icontains=query) |
             Q(ai_summary__icontains=query) |
             Q(messages__content__icontains=query)

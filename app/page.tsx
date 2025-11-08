@@ -136,7 +136,14 @@ export default function Home() {
               }}
             />
           )}
-          {activeView === 'intelligence' && <IntelligenceQuery />}
+          {activeView === 'intelligence' && (
+            <IntelligenceQuery
+              onSelectConversation={(id) => {
+                setSelectedConversationId(id);
+                setActiveView('chat');
+              }}
+            />
+          )}
           {activeView === 'profile' && <IntelligenceProfile />}
           {activeView === 'analytics' && <AnalyticsDashboard />}
         </div>

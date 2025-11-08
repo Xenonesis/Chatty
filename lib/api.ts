@@ -76,8 +76,8 @@ class APIClient {
   }
 
   // Conversation endpoints
-  async getConversations(): Promise<Conversation[]> {
-    const response = await this.request<{ count: number; next: string | null; previous: string | null; results: Conversation[] }>('/conversations/');
+  async getConversations(userId: string = 'default_user'): Promise<Conversation[]> {
+    const response = await this.request<{ count: number; next: string | null; previous: string | null; results: Conversation[] }>(`/conversations/?user_id=${userId}`);
     // Handle paginated response from Django REST Framework
     return response.results || [];
   }
@@ -86,12 +86,15 @@ class APIClient {
     return this.request<Conversation>(`/conversations/${id}/`);
   }
 
-  async createConversation(title?: string): Promise<Conversation> {
+  async createConversation(title?: string, userId: string = 'default_user'): Promise<Conversation> {
     console.log('Creating conversation with title:', title || 'New Conversation');
     try {
       const result = await this.request<Conversation>('/conversations/', {
         method: 'POST',
-        body: JSON.stringify({ title: title || 'New Conversation' }),
+        body: JSON.stringify({ 
+          title: title || 'New Conversation',
+          user_id: userId 
+        }),
       });
       console.log('Conversation created successfully:', result);
       return result;
@@ -146,20 +149,22 @@ class APIClient {
   }
 
   // Intelligence endpoints
-  async queryIntelligence(query: string, searchKeywords?: string): Promise<QueryIntelligenceResponse> {
+  async queryIntelligence(query: string, searchKeywords?: string, userId: string = 'default_user'): Promise<QueryIntelligenceResponse> {
     return this.request<QueryIntelligenceResponse>('/intelligence/query/', {
       method: 'POST',
       body: JSON.stringify({
         query,
         search_keywords: searchKeywords,
+        user_id: userId,
       }),
     });
   }
 
-  async searchConversations(query: string, semantic: boolean = false): Promise<SearchResponse> {
+  async searchConversations(query: string, semantic: boolean = false, userId: string = 'default_user'): Promise<SearchResponse> {
     const params = new URLSearchParams({
       q: query,
       semantic: semantic.toString(),
+      user_id: userId,
     });
     return this.request<SearchResponse>(`/conversations/search/?${params}`);
   }

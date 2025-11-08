@@ -12,9 +12,9 @@ class AIService:
     Handles chat completions, summarization, and conversation analysis.
     """
     
-    def __init__(self, provider: str = None):
+    def __init__(self, provider: str = None, model: str = None):
         self.provider = provider or settings.AI_PROVIDER
-        self.model = settings.AI_MODEL
+        self.model = model or settings.AI_MODEL  # Use user's model if provided
         self._initialize_client()
     
     def _initialize_client(self):

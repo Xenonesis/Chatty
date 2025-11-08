@@ -27,6 +27,7 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
   const [conversationTitle, setConversationTitle] = useState('');
   const [availableProviders, setAvailableProviders] = useState<AIProvider[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string>('');
+  const [selectedModel, setSelectedModel] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -74,9 +75,22 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       console.log('Loaded providers:', response);
       setAvailableProviders(response.providers);
       
-      // Check localStorage for user's last selected provider
+      // Check localStorage for user's last selected provider and model
       const savedProvider = localStorage.getItem('ai_provider');
+      const savedSettings = localStorage.getItem('ai_settings');
+      let savedModel = '';
+      
+      if (savedSettings) {
+        try {
+          const settings = JSON.parse(savedSettings);
+          savedModel = settings.model || '';
+        } catch (e) {
+          console.error('Failed to parse saved settings:', e);
+        }
+      }
+      
       console.log('Saved provider from localStorage:', savedProvider);
+      console.log('Saved model from localStorage:', savedModel);
       console.log('Current provider from backend:', response.current_provider);
       
       // Use saved provider if it exists in available providers, otherwise use backend's current provider
@@ -90,6 +104,12 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
         const fallbackProvider = response.providers[0]?.id || '';
         console.log('Using fallback provider:', fallbackProvider);
         setSelectedProvider(fallbackProvider);
+      }
+      
+      // Set the saved model
+      if (savedModel) {
+        console.log('Using saved model:', savedModel);
+        setSelectedModel(savedModel);
       }
     } catch (error) {
       console.error('Failed to load configured providers:', error);
@@ -182,10 +202,11 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
     }
 
     try {
-      // Only send provider if it's actually selected
+      // Only send provider and model if they're actually selected
       const providerToSend = selectedProvider || undefined;
-      console.log('Sending message - conversationId:', currentConversationId, 'content:', userMessageContent, 'provider:', providerToSend);
-      const response = await api.sendMessage(currentConversationId, userMessageContent, providerToSend);
+      const modelToSend = selectedModel || undefined;
+      console.log('Sending message - conversationId:', currentConversationId, 'content:', userMessageContent, 'provider:', providerToSend, 'model:', modelToSend);
+      const response = await api.sendMessage(currentConversationId, userMessageContent, providerToSend, modelToSend);
       
       // Verify that messages have IDs (meaning they were saved to database)
       if (!response.user_message.id || !response.ai_message.id) {
@@ -365,9 +386,9 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
                   ))}
                 </SelectContent>
               </Select>
-              {availableProviders.find(p => p.id === selectedProvider)?.model && (
+              {(selectedModel || availableProviders.find(p => p.id === selectedProvider)?.model) && (
                 <span className="text-xs text-muted-foreground px-1">
-                  Model: {availableProviders.find(p => p.id === selectedProvider)?.model}
+                  Model: {selectedModel || availableProviders.find(p => p.id === selectedProvider)?.model}
                 </span>
               )}
             </div>

@@ -99,7 +99,7 @@ class APIClient {
   }
 
   // Message endpoints
-  async sendMessage(conversationId: number, content: string, provider?: string): Promise<SendMessageResponse> {
+  async sendMessage(conversationId: number, content: string, provider?: string, model?: string): Promise<SendMessageResponse> {
     const body: any = {
       conversation_id: conversationId,
       content,
@@ -108,6 +108,11 @@ class APIClient {
     // Only include provider if it's defined and not empty
     if (provider) {
       body.provider = provider;
+    }
+    
+    // Only include model if it's defined and not empty
+    if (model) {
+      body.model = model;
     }
     
     console.log('Sending message with body:', body);

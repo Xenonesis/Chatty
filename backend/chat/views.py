@@ -70,8 +70,9 @@ def send_message(request):
     conversation_id = request.data.get('conversation_id')
     content = request.data.get('content')
     provider = request.data.get('provider')
+    model = request.data.get('model')  # Get user's selected model
     
-    print(f"Parsed - conversation_id: {conversation_id}, content: '{content}', provider: {provider}")
+    print(f"Parsed - conversation_id: {conversation_id}, content: '{content}', provider: {provider}, model: {model}")
     
     if conversation_id is None or not content or not str(content).strip():
         return Response(
@@ -128,7 +129,7 @@ def send_message(request):
     
     # Generate AI response with error handling
     try:
-        ai_service = AIService(provider=provider)
+        ai_service = AIService(provider=provider, model=model)
         ai_response = ai_service.generate_response(messages_for_ai)
     except Exception as e:
         print(f"AI service error: {str(e)}")

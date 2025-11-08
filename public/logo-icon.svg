@@ -1,0 +1,18 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="iconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="64" height="64" rx="12" fill="url(#iconGradient)"/>
+  
+  <!-- Chat bubble with AI dots -->
+  <path d="M 16 22 Q 16 16 22 16 L 42 16 Q 48 16 48 22 L 48 32 Q 48 38 42 38 L 28 38 L 20 46 L 20 38 Q 16 38 16 32 Z" 
+        fill="white" opacity="0.95"/>
+  
+  <circle cx="24" cy="26" r="2.5" fill="#6366f1"/>
+  <circle cx="32" cy="26" r="2.5" fill="#6366f1"/>
+  <circle cx="40" cy="26" r="2.5" fill="#6366f1"/>
+</svg>

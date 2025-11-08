@@ -229,18 +229,18 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>AI Settings</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-lg sm:text-xl">AI Settings</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
             Configure your AI provider and API keys
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-4 sm:space-y-6 py-3 sm:py-4">
           {/* Provider Selection */}
-          <div className="space-y-3">
-            <Label>Select AI Provider</Label>
+          <div className="space-y-2 sm:space-y-3">
+            <Label className="text-sm sm:text-base">Select AI Provider</Label>
             <Select
               value={selectedProvider}
               onValueChange={(value) => {
@@ -250,16 +250,16 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 setValidationMessage('');
               }}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full text-sm sm:text-base">
                 <SelectValue placeholder="Choose a provider" />
               </SelectTrigger>
               <SelectContent>
                 {AI_PROVIDERS.map((provider) => (
-                  <SelectItem key={provider.id} value={provider.id}>
+                  <SelectItem key={provider.id} value={provider.id} className="text-sm sm:text-base">
                     <div className="flex items-center justify-between w-full">
-                      <span>{provider.name}</span>
-                      <span className="text-xs text-muted-foreground ml-2">
-                        {provider.requiresApiKey ? '(API Key)' : '(Local)'}
+                      <span className="truncate">{provider.name}</span>
+                      <span className="text-[10px] sm:text-xs text-muted-foreground ml-2 flex-shrink-0">
+                        {provider.requiresApiKey ? '(API)' : '(Local)'}
                       </span>
                     </div>
                   </SelectItem>
@@ -270,8 +270,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           {/* Provider Settings */}
           {currentProvider && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">
+            <div className="space-y-3 sm:space-y-4">
+              <h3 className="text-base sm:text-lg font-semibold">
                 {currentProvider.name} Configuration
               </h3>
 
@@ -286,10 +286,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
                     : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
                 }`}>
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-2 text-sm font-medium">
+                  <CardContent className="p-2.5 sm:p-3">
+                    <div className="flex items-center gap-2 text-xs sm:text-sm font-medium">
                       {getValidationIcon()}
-                      <span>{isValidating ? 'Validating API key and fetching models...' : validationMessage}</span>
+                      <span className="break-words">{isValidating ? 'Validating...' : validationMessage}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -297,7 +297,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
               {currentProvider.fields.map((field) => (
                 <div key={field.name} className="space-y-2">
-                  <Label>
+                  <Label className="text-sm sm:text-base">
                     {field.label}
                     {field.required && <span className="text-destructive ml-1">*</span>}
                   </Label>
@@ -307,18 +307,18 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       onValueChange={(value) => setSettings({ ...settings, [field.name]: value })}
                       disabled={isValidating || availableModels.length === 0}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="text-sm sm:text-base">
                         <SelectValue placeholder={
                           isValidating 
-                            ? 'Fetching models...'
+                            ? 'Fetching...'
                             : availableModels.length === 0 
-                            ? 'Enter API key to fetch models' 
+                            ? 'Enter API key first' 
                             : 'Select a model'
                         } />
                       </SelectTrigger>
                       <SelectContent>
                         {availableModels.map((model) => (
-                          <SelectItem key={model.id} value={model.id}>
+                          <SelectItem key={model.id} value={model.id} className="text-sm sm:text-base">
                             {model.name}
                           </SelectItem>
                         ))}
@@ -336,6 +336,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         }
                       }}
                       placeholder={field.placeholder}
+                      className="text-sm sm:text-base"
                     />
                   )}
                 </div>
@@ -345,19 +346,19 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           {/* Info Box */}
           <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-blue-800 dark:text-blue-200">
-                  <p className="font-semibold mb-2">How it works:</p>
-                  <ul className="list-disc list-inside space-y-1">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-start gap-2 sm:gap-3">
+                <Info className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div className="text-xs sm:text-sm text-blue-800 dark:text-blue-200">
+                  <p className="font-semibold mb-1.5 sm:mb-2">How it works:</p>
+                  <ul className="list-disc list-inside space-y-0.5 sm:space-y-1">
                     <li>Enter your API key or connection URL</li>
-                    <li>Models are automatically fetched and validated in real-time</li>
-                    <li>Select your preferred model from the dropdown</li>
-                    <li>Your settings are stored locally and sent to the backend</li>
+                    <li>Models are fetched automatically</li>
+                    <li>Select your preferred model</li>
+                    <li>Settings stored locally</li>
                   </ul>
-                  <p className="mt-2 text-xs opacity-80">
-                    <strong>Security:</strong> API keys are stored in your browser localStorage. For production, implement server-side key management.
+                  <p className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs opacity-80">
+                    <strong>Security:</strong> API keys stored in browser localStorage
                   </p>
                 </div>
               </div>
@@ -370,22 +371,22 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
               : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
             }>
-              <CardContent className="p-3">
-                <p className="text-sm">{saveMessage}</p>
+              <CardContent className="p-2.5 sm:p-3">
+                <p className="text-xs sm:text-sm break-words">{saveMessage}</p>
               </CardContent>
             </Card>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto" size="sm">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto" size="sm">
             {isSaving ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Saving...
+                <span className="ml-2">Saving...</span>
               </>
             ) : (
               'Save Settings'

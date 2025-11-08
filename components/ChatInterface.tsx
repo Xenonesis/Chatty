@@ -425,52 +425,57 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
   };
 
   return (
-    <Card className="flex flex-col h-[calc(100vh-8rem)] overflow-hidden">
+    <Card className="flex flex-col h-[calc(100vh-7rem)] sm:h-[calc(100vh-8rem)] overflow-hidden">
       {/* Chat Header */}
-      <CardHeader className="flex-row items-center justify-between space-y-0 border-b">
-        <div className="flex-1">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <MessageCircle className="w-5 h-5" />
-            {conversationTitle || 'New Conversation'}
+      <CardHeader className="flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 border-b p-3 sm:p-4 md:p-6">
+        <div className="flex-1 w-full sm:w-auto">
+          <h2 className="text-base sm:text-lg md:text-xl font-semibold flex items-center gap-2">
+            <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="truncate">{conversationTitle || 'New Conversation'}</span>
           </h2>
           {conversationId && (
-            <p className="text-sm text-muted-foreground mt-1">Session #{conversationId}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">Session #{conversationId}</p>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 w-full sm:w-auto">
           <Button
             onClick={startNewConversation}
             variant="default"
-            className="bg-green-600 hover:bg-green-700"
+            size="sm"
+            className="bg-green-600 hover:bg-green-700 text-xs sm:text-sm flex-1 sm:flex-none"
           >
-            <Plus className="w-4 h-4" />
-            New Chat
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden xs:inline ml-1">New Chat</span>
           </Button>
           {conversationId && messages.length > 0 && (
             <Button
               onClick={handleGenerateSummary}
               variant="outline"
+              size="sm"
               disabled={isLoading}
+              className="text-xs sm:text-sm flex-1 sm:flex-none"
             >
-              <Sparkles className="w-4 h-4" />
-              Generate Summary
+              <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden md:inline ml-1">Summary</span>
             </Button>
           )}
           {conversationId && conversationStatus === 'active' && (
             <Button
               onClick={handleEndConversation}
               variant="destructive"
+              size="sm"
               disabled={isLoading}
+              className="text-xs sm:text-sm flex-1 sm:flex-none"
             >
-              <FileText className="w-4 h-4" />
-              End & Summarize
+              <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden md:inline ml-1">End</span>
             </Button>
           )}
         </div>
       </CardHeader>
 
       {/* Messages Area */}
-      <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
+      <CardContent className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4">
         {/* Display conversation summary if it exists */}
         {conversationSummary && (
           <Card className="bg-accent/50 border-primary/30 animate-slideDown">
@@ -516,29 +521,29 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
             style={{ animationDelay: `${index * 0.05}s` }}
           >
             <Card
-              className={`max-w-[75%] ${
+              className={`max-w-[95%] sm:max-w-[85%] md:max-w-[75%] ${
                 message.sender === 'user'
                   ? 'bg-primary text-primary-foreground border-primary'
                   : ''
               }`}
             >
-              <CardContent className="px-5 py-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge variant={message.sender === 'user' ? 'default' : 'secondary'} className="rounded-full w-6 h-6 p-0 flex items-center justify-center">
+              <CardContent className="px-3 py-2 sm:px-4 sm:py-3 md:px-5">
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                  <Badge variant={message.sender === 'user' ? 'default' : 'secondary'} className="rounded-full w-5 h-5 sm:w-6 sm:h-6 p-0 flex items-center justify-center text-xs">
                     {message.sender === 'user' ? '👤' : '🤖'}
                   </Badge>
-                  <span className={`text-xs font-semibold ${
+                  <span className={`text-[10px] sm:text-xs font-semibold ${
                     message.sender === 'user' ? 'text-primary-foreground/80' : 'text-muted-foreground'
                   }`}>
-                    {message.sender === 'user' ? 'You' : 'AI Assistant'}
+                    {message.sender === 'user' ? 'You' : 'AI'}
                   </span>
-                  <span className={`text-xs ${
+                  <span className={`text-[10px] sm:text-xs ${
                     message.sender === 'user' ? 'text-primary-foreground/60' : 'text-muted-foreground'
                   }`}>
                     {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
-                <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
+                <p className="whitespace-pre-wrap break-words leading-relaxed text-sm sm:text-base">{message.content}</p>
               </CardContent>
             </Card>
           </div>
@@ -559,55 +564,58 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       </CardContent>
 
       {/* Input Area */}
-      <form onSubmit={handleSendMessage} className="p-4 border-t">
-        <div className="flex gap-3">
+      <form onSubmit={handleSendMessage} className="p-2 sm:p-3 md:p-4 border-t">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           {availableProviders.length > 0 && (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 w-full sm:w-auto">
               <Select
                 value={selectedProvider}
                 onValueChange={setSelectedProvider}
                 disabled={isLoading}
               >
-                <SelectTrigger className="min-w-[200px]">
+                <SelectTrigger className="w-full sm:min-w-[180px] md:min-w-[200px] text-xs sm:text-sm">
                   <SelectValue placeholder="Select AI Provider" />
                 </SelectTrigger>
                 <SelectContent>
                   {availableProviders.map((provider) => (
-                    <SelectItem key={provider.id} value={provider.id}>
+                    <SelectItem key={provider.id} value={provider.id} className="text-xs sm:text-sm">
                       {provider.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {(selectedModel || availableProviders.find(p => p.id === selectedProvider)?.model) && (
-                <span className="text-xs text-muted-foreground px-1">
+                <span className="text-[10px] sm:text-xs text-muted-foreground px-1 truncate">
                   Model: {selectedModel || availableProviders.find(p => p.id === selectedProvider)?.model}
                 </span>
               )}
             </div>
           )}
-          <Input
-            type="text"
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            placeholder={conversationStatus === 'ended' ? 'This conversation has ended...' : 'Type your message here...'}
-            disabled={isLoading || availableProviders.length === 0 || conversationStatus === 'ended'}
-            className="flex-1"
-          />
-          <Button
-            type="submit"
-            disabled={!inputMessage.trim() || isLoading || availableProviders.length === 0 || !selectedProvider || conversationStatus === 'ended'}
-            className="px-8"
-          >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <span>Send</span>
-                <Send className="w-4 h-4" />
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2 flex-1">
+            <Input
+              type="text"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              placeholder={conversationStatus === 'ended' ? 'Conversation ended...' : 'Type message...'}
+              disabled={isLoading || availableProviders.length === 0 || conversationStatus === 'ended'}
+              className="flex-1 text-sm sm:text-base"
+            />
+            <Button
+              type="submit"
+              disabled={!inputMessage.trim() || isLoading || availableProviders.length === 0 || !selectedProvider || conversationStatus === 'ended'}
+              className="px-3 sm:px-6 md:px-8"
+              size="sm"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <span className="hidden sm:inline">Send</span>
+                  <Send className="w-4 h-4 sm:ml-1" />
+                </>
+              )}
+            </Button>
+          </div>
         </div>
         {availableProviders.length === 0 && (
           <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 mt-2">
@@ -631,19 +639,19 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
 
       {/* Notification Toast */}
       {notification && (
-        <div className="fixed top-4 right-4 z-50 animate-slideDown">
+        <div className="fixed top-4 right-2 sm:right-4 left-2 sm:left-auto z-50 animate-slideDown max-w-sm sm:max-w-md">
           <Card className={`shadow-lg ${
             notification.type === 'success' ? 'border-green-500' : 
             notification.type === 'error' ? 'border-red-500' : 
             notification.type === 'warning' ? 'border-yellow-500' : 
             'border-blue-500'
           }`}>
-            <CardContent className="flex items-center gap-3 p-4">
-              {notification.type === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
-              {notification.type === 'error' && <XCircle className="w-5 h-5 text-red-500" />}
-              {notification.type === 'warning' && <AlertTriangle className="w-5 h-5 text-yellow-500" />}
-              {notification.type === 'info' && <Info className="w-5 h-5 text-blue-500" />}
-              <p className="font-medium">{notification.message}</p>
+            <CardContent className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4">
+              {notification.type === 'success' && <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />}
+              {notification.type === 'error' && <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 flex-shrink-0" />}
+              {notification.type === 'warning' && <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 flex-shrink-0" />}
+              {notification.type === 'info' && <Info className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 flex-shrink-0" />}
+              <p className="font-medium text-xs sm:text-sm">{notification.message}</p>
             </CardContent>
           </Card>
         </div>

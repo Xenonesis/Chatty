@@ -156,6 +156,27 @@
   transition-duration: 200ms;
 }
 
+/* Responsive utilities */
+@media (max-width: 640px) {
+  /* Improve touch targets on mobile */
+  button, a, input, select, textarea {
+    min-height: 44px;
+  }
+  
+  /* Better text readability on mobile */
+  body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+}
+
+/* Custom breakpoint for extra small devices */
+@media (min-width: 475px) {
+  .xs\:inline {
+    display: inline;
+  }
+}
+
 /* Enhanced shadows for depth */
 .shadow-sm {
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);

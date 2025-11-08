@@ -14,8 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ChatSumm AI - Conversation Intelligence Platform",
+  title: "ChattyAI - Conversation Intelligence Platform",
   description: "Multi-LLM AI chat platform with conversation intelligence, history tracking, and customizable AI provider integration. Configure your own API keys for OpenAI, Anthropic, Google, or use local LM Studio.",
+  icons: {
+    icon: "/logo-icon.svg",
+  },
 };
 
 export default function RootLayout({

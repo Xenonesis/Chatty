@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Brain, Search, Zap, Lightbulb, Loader2, MessageCircle, Calendar } from 'lucide-react';
+import { Brain, Search, Zap, Lightbulb, Loader2, MessageCircle, Calendar, CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react';
 
 export default function IntelligenceQuery() {
   const [query, setQuery] = useState('');
@@ -20,6 +20,12 @@ export default function IntelligenceQuery() {
   const [searchResults, setSearchResults] = useState<Conversation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [useSemanticSearch, setUseSemanticSearch] = useState(false);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null);
+
+  const showNotification = (type: 'success' | 'error' | 'warning' | 'info', message: string, duration: number = 5000) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), duration);
+  };
 
   const handleQuerySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,9 +36,10 @@ export default function IntelligenceQuery() {
       const response = await api.queryIntelligence(query, searchKeywords);
       setAnswer(response.answer);
       setRelevantConversations(response.relevant_conversations);
+      showNotification('success', 'Answer generated successfully!', 3000);
     } catch (error) {
       console.error('Failed to query intelligence:', error);
-      alert('Failed to get answer. Please try again.');
+      showNotification('error', 'Failed to get answer. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -46,9 +53,10 @@ export default function IntelligenceQuery() {
     try {
       const response = await api.searchConversations(searchQuery, useSemanticSearch);
       setSearchResults(response.results);
+      showNotification('success', `Found ${response.results.length} conversation(s)`, 3000);
     } catch (error) {
       console.error('Failed to search conversations:', error);
-      alert('Failed to search. Please try again.');
+      showNotification('error', 'Failed to search. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -281,6 +289,26 @@ export default function IntelligenceQuery() {
           )}
         </CardContent>
       </Card>
+
+      {/* Notification Toast */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 animate-slideDown">
+          <Card className={`shadow-lg ${
+            notification.type === 'success' ? 'border-green-500' : 
+            notification.type === 'error' ? 'border-red-500' : 
+            notification.type === 'warning' ? 'border-yellow-500' : 
+            'border-blue-500'
+          }`}>
+            <CardContent className="flex items-center gap-3 p-4">
+              {notification.type === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
+              {notification.type === 'error' && <XCircle className="w-5 h-5 text-red-500" />}
+              {notification.type === 'warning' && <AlertTriangle className="w-5 h-5 text-yellow-500" />}
+              {notification.type === 'info' && <Info className="w-5 h-5 text-blue-500" />}
+              <p className="font-medium">{notification.message}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

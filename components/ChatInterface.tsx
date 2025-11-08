@@ -7,7 +7,15 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, Plus, FileText, Send, Loader2 } from 'lucide-react';
+import { MessageCircle, Plus, FileText, Send, Loader2, Sparkles, CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface ChatInterfaceProps {
   conversationId: number | null;
@@ -25,10 +33,14 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationTitle, setConversationTitle] = useState('');
+  const [conversationSummary, setConversationSummary] = useState<string>('');
+  const [conversationStatus, setConversationStatus] = useState<string>('active');
   const [availableProviders, setAvailableProviders] = useState<AIProvider[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null);
+  const [endedConversationDialog, setEndedConversationDialog] = useState<{ open: boolean; message: string } | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -179,6 +191,11 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
     }
   };
 
+  const showNotification = (type: 'success' | 'error' | 'warning' | 'info', message: string, duration: number = 5000) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), duration);
+  };
+
   const loadConversation = async (id: number) => {
     try {
       console.log('Loading conversation', id, 'from database...');
@@ -188,6 +205,8 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       
       setMessages(conversation.messages || []);
       setConversationTitle(conversation.title);
+      setConversationSummary(conversation.ai_summary || '');
+      setConversationStatus(conversation.status || 'active');
       
       // Log message details for debugging
       if (messageCount > 0 && conversation.messages) {
@@ -196,9 +215,14 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       } else {
         console.warn('⚠️ Conversation has no messages in database');
       }
+      
+      // Show info if conversation is ended
+      if (conversation.status === 'ended') {
+        showNotification('info', 'This conversation has ended. Start a new conversation to continue chatting.', 7000);
+      }
     } catch (error) {
       console.error('Failed to load conversation:', error);
-      alert('Failed to load conversation from database');
+      showNotification('error', 'Failed to load conversation from database');
     }
   };
 
@@ -208,9 +232,12 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       onConversationChange(conversation.id);
       setMessages([]);
       setConversationTitle(conversation.title);
+      setConversationSummary('');
+      setConversationStatus('active');
+      showNotification('success', 'New conversation started!', 3000);
     } catch (error) {
       console.error('Failed to create conversation:', error);
-      alert('Failed to start new conversation');
+      showNotification('error', 'Failed to start new conversation');
     }
   };
 
@@ -220,7 +247,13 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
     
     // Ensure we have a valid provider selected
     if (!selectedProvider) {
-      alert('Please select an AI provider before sending a message.');
+      showNotification('warning', 'Please select an AI provider before sending a message.');
+      return;
+    }
+    
+    // Check if conversation is ended
+    if (conversationStatus === 'ended') {
+      setEndedConversationDialog({ open: true, message: inputMessage.trim() });
       return;
     }
 
@@ -244,7 +277,7 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
         setConversationTitle(conversation.title);
       } catch (error) {
         console.error('Failed to create conversation:', error);
-        alert('Failed to start conversation. Please check if the backend is running.');
+        showNotification('error', 'Failed to start conversation. Please check if the backend is running.');
         setIsLoading(false);
         setInputMessage(inputMessage); // Restore message
         return;
@@ -258,7 +291,7 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
     // Final validation before sending
     if (!currentConversationId) {
       console.error('CRITICAL: No conversation ID after creation attempt!');
-      alert('Failed to create conversation. Please try again.');
+      showNotification('error', 'Failed to create conversation. Please try again.');
       setIsLoading(false);
       setInputMessage(userMessageContent); // Restore the message
       return;
@@ -301,8 +334,33 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       
     } catch (error) {
       console.error('Failed to send message:', error);
-      alert('Failed to send message. Please try again.');
-      setInputMessage(userMessageContent); // Restore the message so user can try again
+      
+      // Check if the error is about an ended conversation
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('Cannot send messages to an ended conversation')) {
+        // Show dialog to start a new conversation
+        setEndedConversationDialog({ open: true, message: userMessageContent });
+      } else {
+        // Other error - show notification
+        showNotification('error', 'Failed to send message. Please try again.');
+        setInputMessage(userMessageContent); // Restore the message so user can try again
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGenerateSummary = async () => {
+    if (!conversationId) return;
+
+    try {
+      setIsLoading(true);
+      const result = await api.generateSummary(conversationId);
+      setConversationSummary(result.summary);
+      showNotification('success', 'Summary generated successfully!', 3000);
+    } catch (error) {
+      console.error('Failed to generate summary:', error);
+      showNotification('error', 'Failed to generate summary');
     } finally {
       setIsLoading(false);
     }
@@ -317,13 +375,50 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
     try {
       setIsLoading(true);
       const result = await api.endConversation(conversationId);
-      alert(`Conversation ended!\n\nSummary: ${result.summary}`);
-      onConversationChange(null);
-      setMessages([]);
-      setConversationTitle('');
+      setConversationSummary(result.summary);
+      setConversationStatus('ended');
+      showNotification('success', `Conversation ended! Summary: ${result.summary}`, 7000);
     } catch (error) {
       console.error('Failed to end conversation:', error);
-      alert('Failed to end conversation');
+      showNotification('error', 'Failed to end conversation');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStartNewConversationWithMessage = async () => {
+    if (!endedConversationDialog) return;
+    
+    const messageToSend = endedConversationDialog.message;
+    setEndedConversationDialog(null);
+    setIsLoading(true);
+    
+    try {
+      // Create a new conversation
+      const conversation = await api.createConversation();
+      onConversationChange(conversation.id);
+      setMessages([]);
+      setConversationTitle(conversation.title);
+      setConversationSummary('');
+      setConversationStatus('active');
+      
+      // Send the message to the new conversation
+      const response = await api.sendMessage(
+        conversation.id, 
+        messageToSend, 
+        selectedProvider || undefined, 
+        selectedModel || undefined
+      );
+      
+      // Update local state with the saved messages
+      setMessages([response.user_message, response.ai_message]);
+      showNotification('success', 'New conversation started with your message!', 3000);
+      
+      console.log('✓ Message sent to new conversation');
+    } catch (error) {
+      console.error('Failed to create new conversation:', error);
+      showNotification('error', 'Failed to start new conversation. Please try again.');
+      setInputMessage(messageToSend); // Restore message
     } finally {
       setIsLoading(false);
     }
@@ -351,10 +446,21 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
             <Plus className="w-4 h-4" />
             New Chat
           </Button>
-          {conversationId && (
+          {conversationId && messages.length > 0 && (
+            <Button
+              onClick={handleGenerateSummary}
+              variant="outline"
+              disabled={isLoading}
+            >
+              <Sparkles className="w-4 h-4" />
+              Generate Summary
+            </Button>
+          )}
+          {conversationId && conversationStatus === 'active' && (
             <Button
               onClick={handleEndConversation}
               variant="destructive"
+              disabled={isLoading}
             >
               <FileText className="w-4 h-4" />
               End & Summarize
@@ -365,7 +471,31 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
 
       {/* Messages Area */}
       <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.length === 0 && (
+        {/* Display conversation summary if it exists */}
+        {conversationSummary && (
+          <Card className="bg-accent/50 border-primary/30 animate-slideDown">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="bg-primary/20 p-2 rounded-lg">
+                  <FileText className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold mb-1 flex items-center gap-2">
+                    Conversation Summary
+                    <Badge variant="outline" className="text-xs">
+                      {conversationStatus === 'ended' ? 'Ended' : 'Generated'}
+                    </Badge>
+                  </h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {conversationSummary}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {messages.length === 0 && !conversationSummary && (
           <div className="flex items-center justify-center h-full">
             <div className="text-center animate-fadeIn">
               <div className="w-24 h-24 mx-auto mb-6 bg-primary/10 rounded-full flex items-center justify-center">
@@ -460,13 +590,13 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
             type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Type your message here..."
-            disabled={isLoading || availableProviders.length === 0}
+            placeholder={conversationStatus === 'ended' ? 'This conversation has ended...' : 'Type your message here...'}
+            disabled={isLoading || availableProviders.length === 0 || conversationStatus === 'ended'}
             className="flex-1"
           />
           <Button
             type="submit"
-            disabled={!inputMessage.trim() || isLoading || availableProviders.length === 0 || !selectedProvider}
+            disabled={!inputMessage.trim() || isLoading || availableProviders.length === 0 || !selectedProvider || conversationStatus === 'ended'}
             className="px-8"
           >
             {isLoading ? (
@@ -498,6 +628,83 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
           </Card>
         )}
       </form>
+
+      {/* Notification Toast */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 animate-slideDown">
+          <Card className={`shadow-lg ${
+            notification.type === 'success' ? 'border-green-500' : 
+            notification.type === 'error' ? 'border-red-500' : 
+            notification.type === 'warning' ? 'border-yellow-500' : 
+            'border-blue-500'
+          }`}>
+            <CardContent className="flex items-center gap-3 p-4">
+              {notification.type === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
+              {notification.type === 'error' && <XCircle className="w-5 h-5 text-red-500" />}
+              {notification.type === 'warning' && <AlertTriangle className="w-5 h-5 text-yellow-500" />}
+              {notification.type === 'info' && <Info className="w-5 h-5 text-blue-500" />}
+              <p className="font-medium">{notification.message}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Ended Conversation Dialog */}
+      <Dialog open={endedConversationDialog?.open || false} onOpenChange={(open) => {
+        if (!open) {
+          setEndedConversationDialog(null);
+          setInputMessage(endedConversationDialog?.message || '');
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-yellow-600">
+              <AlertTriangle className="w-5 h-5" />
+              Conversation Has Ended
+            </DialogTitle>
+            <DialogDescription className="pt-4">
+              This conversation has been ended and is now read-only.
+              <br />
+              <br />
+              Would you like to start a new conversation with your message?
+              <br />
+              <br />
+              <span className="text-sm italic text-muted-foreground">
+                "{endedConversationDialog?.message}"
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setInputMessage(endedConversationDialog?.message || '');
+                setEndedConversationDialog(null);
+              }}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleStartNewConversationWithMessage}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Starting...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Start New Conversation
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

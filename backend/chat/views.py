@@ -179,6 +179,60 @@ def send_message(request):
 
 
 @api_view(['POST'])
+def generate_summary(request, pk):
+    """
+    POST: Generate a summary for an active conversation without ending it
+    
+    Returns:
+    {
+        "conversation": ConversationDetail,
+        "summary": str
+    }
+    """
+    try:
+        conversation = Conversation.objects.get(id=pk)
+    except Conversation.DoesNotExist:
+        return Response(
+            {"error": "Conversation not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    # Generate summary
+    messages = Message.objects.filter(conversation=conversation).order_by('timestamp')
+    
+    if not messages.exists():
+        return Response(
+            {"error": "Cannot generate summary for conversation with no messages"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    conversation_history = [
+        {"sender": msg.sender, "content": msg.content}
+        for msg in messages
+    ]
+    
+    ai_service = AIService()
+    summary = ai_service.generate_summary(conversation_history)
+    conversation.ai_summary = summary
+    
+    # Extract and store metadata
+    topics = ai_service.extract_key_topics(conversation_history)
+    conversation.metadata = {
+        **conversation.metadata,
+        'topics': topics,
+        'message_count': len(conversation_history),
+        'duration_seconds': conversation.get_duration()
+    }
+    
+    conversation.save()
+    
+    return Response({
+        "conversation": ConversationDetailSerializer(conversation).data,
+        "summary": summary
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
 def end_conversation(request, pk):
     """
     POST: End a conversation and generate summary

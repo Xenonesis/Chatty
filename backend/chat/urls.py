@@ -10,6 +10,7 @@ urlpatterns = [
     path('conversations/', views.ConversationListView.as_view(), name='conversation-list'),
     path('conversations/<int:pk>/', views.ConversationDetailView.as_view(), name='conversation-detail'),
     path('conversations/<int:pk>/end/', views.end_conversation, name='conversation-end'),
+    path('conversations/<int:pk>/generate-summary/', views.generate_summary, name='conversation-generate-summary'),
     
     # Message endpoints
     path('messages/send/', views.send_message, name='message-send'),

@@ -97,6 +97,12 @@ class APIClient {
     }
   }
 
+  async generateSummary(id: number): Promise<{ conversation: Conversation; summary: string }> {
+    return this.request(`/conversations/${id}/generate-summary/`, {
+      method: 'POST',
+    });
+  }
+
   async endConversation(id: number): Promise<{ conversation: Conversation; summary: string }> {
     return this.request(`/conversations/${id}/end/`, {
       method: 'POST',

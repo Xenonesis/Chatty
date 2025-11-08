@@ -68,7 +68,9 @@ class APIClient {
 
   // Conversation endpoints
   async getConversations(): Promise<Conversation[]> {
-    return this.request<Conversation[]>('/conversations/');
+    const response = await this.request<{ count: number; next: string | null; previous: string | null; results: Conversation[] }>('/conversations/');
+    // Handle paginated response from Django REST Framework
+    return response.results || [];
   }
 
   async getConversation(id: number): Promise<Conversation> {

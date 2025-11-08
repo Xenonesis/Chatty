@@ -21,19 +21,47 @@ class AIService:
         """Initialize the appropriate AI client based on provider."""
         if self.provider == 'openai':
             import openai
-            self.client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+            api_key = getattr(settings, 'OPENAI_API_KEY', '')
+            if not api_key:
+                raise ValueError("OpenAI API key not configured. Please set it in AI Settings.")
+            self.client = openai.OpenAI(api_key=api_key)
         elif self.provider == 'anthropic':
             import anthropic
-            self.client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+            api_key = getattr(settings, 'ANTHROPIC_API_KEY', '')
+            if not api_key:
+                raise ValueError("Anthropic API key not configured. Please set it in AI Settings.")
+            self.client = anthropic.Anthropic(api_key=api_key)
         elif self.provider == 'google':
             import google.generativeai as genai
-            genai.configure(api_key=settings.GOOGLE_API_KEY)
+            api_key = getattr(settings, 'GOOGLE_API_KEY', '')
+            if not api_key:
+                raise ValueError("Google API key not configured. Please set it in AI Settings.")
+            genai.configure(api_key=api_key)
             self.client = genai.GenerativeModel(self.model)
+        elif self.provider == 'openrouter':
+            import openai
+            api_key = getattr(settings, 'OPENROUTER_API_KEY', '')
+            if not api_key:
+                raise ValueError("OpenRouter API key not configured. Please set it in AI Settings.")
+            print(f"Initializing OpenRouter with API key: {api_key[:10]}...")
+            self.client = openai.OpenAI(
+                base_url='https://openrouter.ai/api/v1',
+                api_key=api_key
+            )
         elif self.provider == 'lmstudio':
             import openai
+            base_url = getattr(settings, 'LM_STUDIO_BASE_URL', 'http://localhost:1234/v1')
+            api_key = getattr(settings, 'LM_STUDIO_API_KEY', 'lm-studio')
             self.client = openai.OpenAI(
-                base_url=settings.LM_STUDIO_BASE_URL,
-                api_key=settings.LM_STUDIO_API_KEY
+                base_url=base_url,
+                api_key=api_key
+            )
+        elif self.provider == 'ollama':
+            import openai
+            base_url = getattr(settings, 'OLLAMA_BASE_URL', 'http://localhost:11434')
+            self.client = openai.OpenAI(
+                base_url=f"{base_url}/v1",
+                api_key='ollama'  # Ollama doesn't need a real API key
             )
         else:
             raise ValueError(f"Unsupported AI provider: {self.provider}")
@@ -49,7 +77,7 @@ class AIService:
             AI response text
         """
         try:
-            if self.provider in ['openai', 'lmstudio']:
+            if self.provider in ['openai', 'openrouter', 'lmstudio', 'ollama']:
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,

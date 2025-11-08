@@ -71,11 +71,7 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
 
   const loadConfiguredProviders = async () => {
     try {
-      const response = await api.getConfiguredProviders();
-      console.log('Loaded providers:', response);
-      setAvailableProviders(response.providers);
-      
-      // Check localStorage for user's last selected provider and model
+      // First check localStorage for user's configured provider and model
       const savedProvider = localStorage.getItem('ai_provider');
       const savedSettings = localStorage.getItem('ai_settings');
       let savedModel = '';
@@ -91,20 +87,53 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       
       console.log('Saved provider from localStorage:', savedProvider);
       console.log('Saved model from localStorage:', savedModel);
-      console.log('Current provider from backend:', response.current_provider);
       
-      // Use saved provider if it exists in available providers, otherwise use backend's current provider
-      if (savedProvider && response.providers.some(p => p.id === savedProvider)) {
-        console.log('Using saved provider:', savedProvider);
-        setSelectedProvider(savedProvider);
-      } else if (response.current_provider && response.providers.some(p => p.id === response.current_provider)) {
-        console.log('Using backend current provider:', response.current_provider);
-        setSelectedProvider(response.current_provider);
-      } else {
-        const fallbackProvider = response.providers[0]?.id || '';
-        console.log('Using fallback provider:', fallbackProvider);
-        setSelectedProvider(fallbackProvider);
+      // Get configured providers from backend
+      const response = await api.getConfiguredProviders();
+      console.log('Backend configured providers:', response);
+      
+      // If user has a saved provider in localStorage, add it to the list if not already there
+      const providers: AIProvider[] = [...response.providers.map(p => ({ ...p, model: null }))];
+      
+      if (savedProvider && !providers.some(p => p.id === savedProvider)) {
+        // Add the saved provider to the list (it's configured in localStorage but not in backend)
+        const providerNames: Record<string, string> = {
+          'openai': 'OpenAI (GPT-4, GPT-3.5)',
+          'anthropic': 'Anthropic (Claude)',
+          'google': 'Google (Gemini)',
+          'openrouter': 'OpenRouter',
+          'lmstudio': 'LM Studio (Local)',
+          'ollama': 'Ollama (Local)'
+        };
+        
+        providers.push({
+          id: savedProvider,
+          name: providerNames[savedProvider] || savedProvider,
+          model: savedModel || null
+        });
+        console.log('Added localStorage provider to list:', savedProvider);
       }
+      
+      setAvailableProviders(providers);
+      
+      // Determine which provider to use
+      let providerToUse = '';
+      
+      if (savedProvider && providers.some(p => p.id === savedProvider)) {
+        // Use localStorage saved provider (highest priority)
+        providerToUse = savedProvider;
+        console.log('Using saved provider from localStorage:', savedProvider);
+      } else if (response.current_provider && providers.some(p => p.id === response.current_provider)) {
+        // Use backend's current provider
+        providerToUse = response.current_provider;
+        console.log('Using backend current provider:', response.current_provider);
+      } else if (providers.length > 0) {
+        // Fallback to first available provider
+        providerToUse = providers[0].id;
+        console.log('Using fallback provider:', providerToUse);
+      }
+      
+      setSelectedProvider(providerToUse);
       
       // Set the saved model
       if (savedModel) {
@@ -113,6 +142,40 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       }
     } catch (error) {
       console.error('Failed to load configured providers:', error);
+      
+      // Fallback to localStorage if backend fails
+      const savedProvider = localStorage.getItem('ai_provider');
+      const savedSettings = localStorage.getItem('ai_settings');
+      
+      if (savedProvider) {
+        const providerNames: Record<string, string> = {
+          'openai': 'OpenAI (GPT-4, GPT-3.5)',
+          'anthropic': 'Anthropic (Claude)',
+          'google': 'Google (Gemini)',
+          'openrouter': 'OpenRouter',
+          'lmstudio': 'LM Studio (Local)',
+          'ollama': 'Ollama (Local)'
+        };
+        
+        let savedModel = '';
+        if (savedSettings) {
+          try {
+            const settings = JSON.parse(savedSettings);
+            savedModel = settings.model || '';
+          } catch (e) {
+            console.error('Failed to parse saved settings:', e);
+          }
+        }
+        
+        setAvailableProviders([{
+          id: savedProvider,
+          name: providerNames[savedProvider] || savedProvider,
+          model: savedModel || null
+        }]);
+        setSelectedProvider(savedProvider);
+        setSelectedModel(savedModel);
+        console.log('Using localStorage fallback:', savedProvider, savedModel);
+      }
     }
   };
 

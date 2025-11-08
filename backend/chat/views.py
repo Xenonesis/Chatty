@@ -6,6 +6,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Q
+from django.conf import settings
 
 from .models import Conversation, Message
 from .serializers import (
@@ -129,10 +130,18 @@ def send_message(request):
     
     # Generate AI response with error handling
     try:
+        # Debug: Print current settings
+        print(f"Provider: {provider}, Model: {model}")
+        print(f"OPENROUTER_API_KEY in settings: {hasattr(settings, 'OPENROUTER_API_KEY')}")
+        if hasattr(settings, 'OPENROUTER_API_KEY'):
+            print(f"OPENROUTER_API_KEY value: {settings.OPENROUTER_API_KEY[:10] if settings.OPENROUTER_API_KEY else 'None'}...")
+        
         ai_service = AIService(provider=provider, model=model)
         ai_response = ai_service.generate_response(messages_for_ai)
     except Exception as e:
         print(f"AI service error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         # Still save a fallback AI message to maintain conversation integrity
         ai_response = f"I apologize, but I encountered an error generating a response: {str(e)}"
     

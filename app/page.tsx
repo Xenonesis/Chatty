@@ -33,41 +33,61 @@ export default function Home() {
               </div>
             </div>
 
-            <nav className="flex items-center gap-3">
-              <Button
-                onClick={() => setActiveView('chat')}
-                variant={activeView === 'chat' ? 'default' : 'outline'}
-                className="flex items-center gap-2"
-              >
-                <MessageCircle className="w-4 h-4" />
-                Chat
-              </Button>
-              <Button
-                onClick={() => setActiveView('conversations')}
-                variant={activeView === 'conversations' ? 'default' : 'outline'}
-                className="flex items-center gap-2"
-              >
-                <History className="w-4 h-4" />
-                History
-              </Button>
-              <Button
-                onClick={() => setActiveView('intelligence')}
-                variant={activeView === 'intelligence' ? 'default' : 'outline'}
-                className="flex items-center gap-2"
-              >
-                <Brain className="w-4 h-4" />
-                Intelligence
-              </Button>
+            <nav className="flex items-center gap-2">
+              <div className="relative group">
+                <Button
+                  onClick={() => setActiveView('chat')}
+                  variant={activeView === 'chat' ? 'default' : 'outline'}
+                  size="icon"
+                  className="w-10 h-10 transition-all duration-200 hover:scale-110"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                </Button>
+                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-lg">
+                  Chat
+                </div>
+              </div>
+              <div className="relative group">
+                <Button
+                  onClick={() => setActiveView('conversations')}
+                  variant={activeView === 'conversations' ? 'default' : 'outline'}
+                  size="icon"
+                  className="w-10 h-10 transition-all duration-200 hover:scale-110"
+                >
+                  <History className="w-5 h-5" />
+                </Button>
+                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-lg">
+                  History
+                </div>
+              </div>
+              <div className="relative group">
+                <Button
+                  onClick={() => setActiveView('intelligence')}
+                  variant={activeView === 'intelligence' ? 'default' : 'outline'}
+                  size="icon"
+                  className="w-10 h-10 transition-all duration-200 hover:scale-110"
+                >
+                  <Brain className="w-5 h-5" />
+                </Button>
+                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-lg">
+                  Intelligence
+                </div>
+              </div>
               <div className="h-6 w-px bg-border mx-1"></div>
               <ThemeToggle />
-              <Button
-                onClick={() => setIsSettingsOpen(true)}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Settings className="w-4 h-4" />
-                Settings
-              </Button>
+              <div className="relative group">
+                <Button
+                  onClick={() => setIsSettingsOpen(true)}
+                  variant="outline"
+                  size="icon"
+                  className="w-10 h-10 transition-all duration-200 hover:scale-110"
+                >
+                  <Settings className="w-5 h-5" />
+                </Button>
+                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-lg">
+                  Settings
+                </div>
+              </div>
             </nav>
           </div>
         </div>

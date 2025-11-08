@@ -64,11 +64,29 @@ const AI_PROVIDERS: AIProvider[] = [
     ],
   },
   {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    requiresApiKey: true,
+    fields: [
+      { name: 'apiKey', label: 'API Key', type: 'password', placeholder: 'sk-or-v1-...', required: true },
+      { name: 'model', label: 'Model', type: 'select', placeholder: 'Select a model', required: false },
+    ],
+  },
+  {
     id: 'lmstudio',
     name: 'LM Studio (Local)',
     requiresApiKey: false,
     fields: [
       { name: 'baseUrl', label: 'Base URL', type: 'text', placeholder: 'http://localhost:1234/v1', required: true },
+      { name: 'model', label: 'Model', type: 'select', placeholder: 'Select a model', required: false },
+    ],
+  },
+  {
+    id: 'ollama',
+    name: 'Ollama (Local)',
+    requiresApiKey: false,
+    fields: [
+      { name: 'baseUrl', label: 'Base URL', type: 'text', placeholder: 'http://localhost:11434', required: true },
       { name: 'model', label: 'Model', type: 'select', placeholder: 'Select a model', required: false },
     ],
   },
@@ -101,7 +119,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const apiKey = settings.apiKey;
     const baseUrl = settings.baseUrl;
 
-    if ((apiKey && apiKey.length > 10) || (selectedProvider === 'lmstudio' && baseUrl)) {
+    if ((apiKey && apiKey.length > 10) || ((selectedProvider === 'lmstudio' || selectedProvider === 'ollama') && baseUrl)) {
       const timeoutId = setTimeout(() => {
         validateApiKey();
       }, 1000);
@@ -121,115 +139,36 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const apiKey = settings.apiKey;
     const baseUrl = settings.baseUrl;
 
-    if (!apiKey && selectedProvider !== 'lmstudio') {
+    if (!apiKey && selectedProvider !== 'lmstudio' && selectedProvider !== 'ollama') {
       setValidationMessage('Please enter an API key first');
       setIsValidating(false);
       return;
     }
 
     try {
-      let models: AIModel[] = [];
+      // Use backend API to fetch models (avoids CORS issues)
+      const response = await fetch('http://localhost:8000/api/settings/ai/fetch-models/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          provider: selectedProvider,
+          apiKey: apiKey,
+          baseUrl: baseUrl,
+        }),
+      });
 
-      switch (selectedProvider) {
-        case 'openai':
-          try {
-            const response = await fetch('https://api.openai.com/v1/models', {
-              headers: { 'Authorization': `Bearer ${apiKey}` },
-            });
-            
-            if (response.ok) {
-              const data = await response.json();
-              models = data.data
-                .filter((m: any) => m.id.includes('gpt'))
-                .map((m: any) => ({ id: m.id, name: m.id }))
-                .sort((a: AIModel, b: AIModel) => b.id.localeCompare(a.id));
-              setValidationMessage(`API key is valid! Found ${models.length} models.`);
-            } else {
-              const error = await response.json();
-              setValidationMessage(`Invalid API key: ${error.error?.message || 'Authentication failed'}`);
-            }
-          } catch (error) {
-            setValidationMessage('Error connecting to OpenAI API. Check your network connection.');
-          }
-          break;
+      const data = await response.json();
 
-        case 'anthropic':
-          models = [
-            { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus' },
-            { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet' },
-            { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' },
-            { id: 'claude-2.1', name: 'Claude 2.1' },
-          ];
-          try {
-            const response = await fetch('https://api.anthropic.com/v1/messages', {
-              method: 'POST',
-              headers: { 
-                'x-api-key': apiKey,
-                'anthropic-version': '2023-06-01',
-                'content-type': 'application/json',
-              },
-              body: JSON.stringify({
-                model: 'claude-3-haiku-20240307',
-                max_tokens: 1,
-                messages: [{ role: 'user', content: 'test' }]
-              }),
-            });
-            
-            if (response.status === 400 || response.ok) {
-              setValidationMessage('API key is valid! Available models loaded.');
-            } else if (response.status === 401) {
-              setValidationMessage('Invalid API key. Please check your Anthropic API key.');
-              models = [];
-            }
-          } catch (error) {
-            setValidationMessage('Cannot verify API key. Using default models.');
-          }
-          break;
-
-        case 'google':
-          try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`);
-            
-            if (response.ok) {
-              const data = await response.json();
-              models = data.models
-                .filter((m: any) => m.name.includes('gemini'))
-                .map((m: any) => ({ 
-                  id: m.name.replace('models/', ''), 
-                  name: m.displayName || m.name 
-                }));
-              setValidationMessage(`API key is valid! Found ${models.length} models.`);
-            } else {
-              setValidationMessage('Invalid API key. Please check your Google API key.');
-            }
-          } catch (error) {
-            setValidationMessage('Error connecting to Google API. Check your network connection.');
-          }
-          break;
-
-        case 'lmstudio':
-          try {
-            const url = baseUrl || 'http://localhost:1234/v1';
-            const response = await fetch(`${url}/models`, {
-              headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {},
-            });
-            
-            if (response.ok) {
-              const data = await response.json();
-              models = data.data.map((m: any) => ({ id: m.id, name: m.id }));
-              setValidationMessage(`Connected to LM Studio! Found ${models.length} local models.`);
-            } else {
-              setValidationMessage('Cannot connect to LM Studio. Make sure it is running.');
-            }
-          } catch (error) {
-            setValidationMessage('Cannot connect to LM Studio. Check the URL and ensure LM Studio is running.');
-          }
-          break;
+      if (data.success) {
+        setAvailableModels(data.models);
+        setValidationMessage(data.message);
+      } else {
+        setValidationMessage(data.error || 'Failed to fetch models');
       }
-
-      setAvailableModels(models);
     } catch (error) {
-      setValidationMessage('An error occurred during validation.');
+      setValidationMessage('Error connecting to backend. Make sure the server is running.');
     } finally {
       setIsValidating(false);
     }
@@ -302,26 +241,31 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           {/* Provider Selection */}
           <div className="space-y-3">
             <Label>Select AI Provider</Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {AI_PROVIDERS.map((provider) => (
-                <Card
-                  key={provider.id}
-                  className={`cursor-pointer transition-all ${
-                    selectedProvider === provider.id
-                      ? 'border-primary bg-primary/5'
-                      : 'hover:border-primary/50'
-                  }`}
-                  onClick={() => setSelectedProvider(provider.id)}
-                >
-                  <CardContent className="p-4">
-                    <div className="font-semibold">{provider.name}</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {provider.requiresApiKey ? 'Requires API key' : 'Local deployment'}
+            <Select
+              value={selectedProvider}
+              onValueChange={(value) => {
+                setSelectedProvider(value);
+                setSettings({});
+                setAvailableModels([]);
+                setValidationMessage('');
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Choose a provider" />
+              </SelectTrigger>
+              <SelectContent>
+                {AI_PROVIDERS.map((provider) => (
+                  <SelectItem key={provider.id} value={provider.id}>
+                    <div className="flex items-center justify-between w-full">
+                      <span>{provider.name}</span>
+                      <span className="text-xs text-muted-foreground ml-2">
+                        {provider.requiresApiKey ? '(API Key)' : '(Local)'}
+                      </span>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Provider Settings */}

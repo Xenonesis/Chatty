@@ -2,6 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { api, Message } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { MessageCircle, Plus, FileText, Send, Loader2 } from 'lucide-react';
 
 interface ChatInterfaceProps {
   conversationId: number | null;
@@ -101,7 +107,7 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       setConversationTitle(conversation.title);
       
       // Log message details for debugging
-      if (messageCount > 0) {
+      if (messageCount > 0 && conversation.messages) {
         console.log('First message:', conversation.messages[0]);
         console.log('Last message:', conversation.messages[messageCount - 1]);
       } else {
@@ -240,52 +246,49 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)] bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <Card className="flex flex-col h-[calc(100vh-8rem)] overflow-hidden">
       {/* Chat Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
+      <CardHeader className="flex-row items-center justify-between space-y-0 border-b">
         <div className="flex-1">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <span className="text-2xl">💬</span>
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <MessageCircle className="w-5 h-5" />
             {conversationTitle || 'New Conversation'}
           </h2>
           {conversationId && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 ml-9">Session #{conversationId}</p>
+            <p className="text-sm text-muted-foreground mt-1">Session #{conversationId}</p>
           )}
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
             onClick={startNewConversation}
-            className="px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all transform hover:scale-105 shadow-md font-medium flex items-center gap-2"
+            variant="default"
+            className="bg-green-600 hover:bg-green-700"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus className="w-4 h-4" />
             New Chat
-          </button>
+          </Button>
           {conversationId && (
-            <button
+            <Button
               onClick={handleEndConversation}
-              className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all transform hover:scale-105 shadow-md font-medium flex items-center gap-2"
+              variant="destructive"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+              <FileText className="w-4 h-4" />
               End & Summarize
-            </button>
+            </Button>
           )}
         </div>
-      </div>
+      </CardHeader>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-transparent to-blue-50/30 dark:to-gray-900/30">
+      <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.length === 0 && (
-          <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+          <div className="flex items-center justify-center h-full">
             <div className="text-center animate-fadeIn">
-              <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-full flex items-center justify-center">
-                <span className="text-5xl">💭</span>
+              <div className="w-24 h-24 mx-auto mb-6 bg-primary/10 rounded-full flex items-center justify-center">
+                <MessageCircle className="w-12 h-12 text-primary" />
               </div>
-              <p className="text-xl font-semibold mb-3 text-gray-700 dark:text-gray-300">Start a Conversation</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md">
+              <p className="text-xl font-semibold mb-3">Start a Conversation</p>
+              <p className="text-sm text-muted-foreground max-w-md">
                 Ask me anything! I'm here to help with information, ideas, or just a friendly chat.
               </p>
             </div>
@@ -298,128 +301,119 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
             className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} animate-slideUp`}
             style={{ animationDelay: `${index * 0.05}s` }}
           >
-            <div
-              className={`max-w-[75%] rounded-2xl px-5 py-3 shadow-md ${
+            <Card
+              className={`max-w-[75%] ${
                 message.sender === 'user'
-                  ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white'
-                  : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600'
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : ''
               }`}
             >
-              <div className="flex items-center gap-2 mb-2">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm ${
-                  message.sender === 'user' 
-                    ? 'bg-blue-700' 
-                    : 'bg-gradient-to-br from-purple-500 to-blue-500'
-                }`}>
-                  {message.sender === 'user' ? '👤' : '🤖'}
+              <CardContent className="px-5 py-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant={message.sender === 'user' ? 'default' : 'secondary'} className="rounded-full w-6 h-6 p-0 flex items-center justify-center">
+                    {message.sender === 'user' ? '👤' : '🤖'}
+                  </Badge>
+                  <span className={`text-xs font-semibold ${
+                    message.sender === 'user' ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                  }`}>
+                    {message.sender === 'user' ? 'You' : 'AI Assistant'}
+                  </span>
+                  <span className={`text-xs ${
+                    message.sender === 'user' ? 'text-primary-foreground/60' : 'text-muted-foreground'
+                  }`}>
+                    {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                 </div>
-                <span className={`text-xs font-semibold ${
-                  message.sender === 'user' ? 'text-blue-100' : 'text-gray-600 dark:text-gray-400'
-                }`}>
-                  {message.sender === 'user' ? 'You' : 'AI Assistant'}
-                </span>
-                <span className={`text-xs ${
-                  message.sender === 'user' ? 'text-blue-200' : 'text-gray-400 dark:text-gray-500'
-                }`}>
-                  {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-              <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
-            </div>
+                <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
+              </CardContent>
+            </Card>
           </div>
         ))}
 
         {isLoading && (
           <div className="flex justify-start animate-slideUp">
-            <div className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl px-5 py-4 shadow-md">
+            <Card className="px-5 py-4">
               <div className="flex items-center gap-3">
-                <div className="flex gap-1">
-                  <div className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce"></div>
-                  <div className="w-2.5 h-2.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  <div className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                </div>
-                <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">AI is thinking...</span>
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span className="text-sm font-medium">AI is thinking...</span>
               </div>
-            </div>
+            </Card>
           </div>
         )}
 
         <div ref={messagesEndRef} />
-      </div>
+      </CardContent>
 
       {/* Input Area */}
-      <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm">
+      <form onSubmit={handleSendMessage} className="p-4 border-t">
         <div className="flex gap-3">
           {availableProviders.length > 0 && (
             <div className="flex flex-col gap-1">
-              <select
+              <Select
                 value={selectedProvider}
-                onChange={(e) => setSelectedProvider(e.target.value)}
+                onValueChange={setSelectedProvider}
                 disabled={isLoading}
-                className="px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl 
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         disabled:opacity-50 disabled:cursor-not-allowed transition-all
-                         font-medium text-sm min-w-[200px]"
-                title="Select AI Provider"
               >
-                {availableProviders.map((provider) => (
-                  <option key={provider.id} value={provider.id}>
-                    {provider.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="min-w-[200px]">
+                  <SelectValue placeholder="Select AI Provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableProviders.map((provider) => (
+                    <SelectItem key={provider.id} value={provider.id}>
+                      {provider.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {availableProviders.find(p => p.id === selectedProvider)?.model && (
-                <span className="text-xs text-gray-500 dark:text-gray-400 px-1">
+                <span className="text-xs text-muted-foreground px-1">
                   Model: {availableProviders.find(p => p.id === selectedProvider)?.model}
                 </span>
               )}
             </div>
           )}
-          <input
+          <Input
             type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             placeholder="Type your message here..."
             disabled={isLoading || availableProviders.length === 0}
-            className="flex-1 px-5 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl 
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                     disabled:opacity-50 disabled:cursor-not-allowed
-                     placeholder:text-gray-400 dark:placeholder:text-gray-500
-                     transition-all"
+            className="flex-1"
           />
-          <button
+          <Button
             type="submit"
             disabled={!inputMessage.trim() || isLoading || availableProviders.length === 0 || !selectedProvider}
-            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 
-                     transition-all disabled:opacity-50 disabled:cursor-not-allowed
-                     font-semibold shadow-lg transform hover:scale-105 disabled:transform-none
-                     flex items-center gap-2"
+            className="px-8"
           >
-            <span>Send</span>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </button>
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <>
+                <span>Send</span>
+                <Send className="w-4 h-4" />
+              </>
+            )}
+          </Button>
         </div>
         {availableProviders.length === 0 && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mt-2">
-            <div className="flex items-start gap-2">
-              <span className="text-yellow-600 dark:text-yellow-400 text-lg">⚠️</span>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-1">
-                  No AI providers configured
-                </p>
-                <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                  Please configure at least one AI provider (OpenAI, Anthropic, Google, or LM Studio) 
-                  in the settings to start chatting.
-                </p>
+          <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 mt-2">
+            <CardContent className="p-3">
+              <div className="flex items-start gap-2">
+                <span className="text-yellow-600 dark:text-yellow-400 text-lg">⚠️</span>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-1">
+                    No AI providers configured
+                  </p>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                    Please configure at least one AI provider (OpenAI, Anthropic, Google, or LM Studio) 
+                    in the settings to start chatting.
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
       </form>
-    </div>
+    </Card>
   );
 }

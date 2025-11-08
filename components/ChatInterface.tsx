@@ -516,7 +516,7 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
 
         {messages.map((message, index) => (
           <div
-            key={`${message.id}-${message.sender}-${index}`}
+            key={message.id || `temp-${message.sender}-${message.timestamp}-${index}`}
             className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} animate-slideUp`}
             style={{ animationDelay: `${index * 0.05}s` }}
           >

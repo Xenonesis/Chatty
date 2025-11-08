@@ -69,7 +69,6 @@ const AI_PROVIDERS: AIProvider[] = [
     requiresApiKey: false,
     fields: [
       { name: 'baseUrl', label: 'Base URL', type: 'text', placeholder: 'http://localhost:1234/v1', required: true },
-      { name: 'apiKey', label: 'API Key', type: 'text', placeholder: 'lm-studio', required: false },
       { name: 'model', label: 'Model', type: 'select', placeholder: 'Select a model', required: false },
     ],
   },

@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Q
 from django.conf import settings
+from django.http import HttpResponse
 
 from .models import Conversation, Message
 from .serializers import (
@@ -18,6 +19,9 @@ from .serializers import (
 )
 from .ai_service import AIService
 from .intelligence_service import IntelligenceService
+from .export_service import ExportService
+from .sharing_service import SharingService
+from .analytics_service import AnalyticsService
 
 
 class ConversationListView(generics.ListCreateAPIView):
@@ -428,3 +432,249 @@ def search_conversations(request):
     return Response({
         "results": ConversationListSerializer(conversations, many=True).data
     }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def export_conversation(request, pk, format):
+    """
+    GET: Export conversation in specified format (json, markdown, pdf)
+    
+    Returns: File download
+    """
+    try:
+        conversation = Conversation.objects.get(id=pk)
+    except Conversation.DoesNotExist:
+        return Response(
+            {"error": "Conversation not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    export_service = ExportService()
+    
+    if format == 'json':
+        content = export_service.export_to_json(conversation)
+        response = HttpResponse(content, content_type='application/json')
+        response['Content-Disposition'] = f'attachment; filename="conversation_{pk}.json"'
+        return response
+    
+    elif format == 'markdown':
+        content = export_service.export_to_markdown(conversation)
+        response = HttpResponse(content, content_type='text/markdown')
+        response['Content-Disposition'] = f'attachment; filename="conversation_{pk}.md"'
+        return response
+    
+    elif format == 'pdf':
+        try:
+            pdf_buffer = export_service.export_to_pdf(conversation)
+            response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="conversation_{pk}.pdf"'
+            return response
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to generate PDF: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    else:
+        return Response(
+            {"error": f"Unsupported format: {format}. Use json, markdown, or pdf."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+@api_view(['POST'])
+def create_share_link(request, pk):
+    """
+    POST: Create a shareable link for a conversation
+    
+    Request body:
+    {
+        "expiry_days": int (optional, default: 7)
+    }
+    
+    Returns:
+    {
+        "share_token": str,
+        "share_url": str,
+        "expires_at": str
+    }
+    """
+    try:
+        conversation = Conversation.objects.get(id=pk)
+    except Conversation.DoesNotExist:
+        return Response(
+            {"error": "Conversation not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    expiry_days = request.data.get('expiry_days', 7)
+    
+    sharing_service = SharingService()
+    share_data = sharing_service.create_share_link(conversation.id, expiry_days)
+    
+    return Response(share_data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+def get_shared_conversation(request, token):
+    """
+    GET: Retrieve a shared conversation by token
+    
+    Returns: Conversation data or 404 if not found/expired
+    """
+    sharing_service = SharingService()
+    conversation_data = sharing_service.get_shared_conversation(token)
+    
+    if not conversation_data:
+        return Response(
+            {"error": "Shared conversation not found or has expired"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    return Response(conversation_data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def toggle_bookmark(request, pk):
+    """
+    POST: Toggle bookmark status for a message
+    
+    Returns: Updated message with bookmark status
+    """
+    try:
+        message = Message.objects.get(id=pk)
+    except Message.DoesNotExist:
+        return Response(
+            {"error": "Message not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    message.is_bookmarked = not message.is_bookmarked
+    if message.is_bookmarked:
+        message.bookmarked_at = timezone.now()
+    else:
+        message.bookmarked_at = None
+    message.save()
+    
+    return Response({
+        "message_id": message.id,
+        "is_bookmarked": message.is_bookmarked,
+        "bookmarked_at": message.bookmarked_at.isoformat() if message.bookmarked_at else None
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def add_reaction(request, pk):
+    """
+    POST: Add a reaction to a message
+    
+    Request body:
+    {
+        "reaction": str (e.g., "thumbs_up", "heart", "laugh")
+    }
+    
+    Returns: Updated message with reactions
+    """
+    try:
+        message = Message.objects.get(id=pk)
+    except Message.DoesNotExist:
+        return Response(
+            {"error": "Message not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    reaction = request.data.get('reaction')
+    if not reaction:
+        return Response(
+            {"error": "reaction is required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Update reaction count
+    reactions = message.reactions or {}
+    reactions[reaction] = reactions.get(reaction, 0) + 1
+    message.reactions = reactions
+    message.save()
+    
+    return Response({
+        "message_id": message.id,
+        "reactions": message.reactions
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def reply_to_message(request, pk):
+    """
+    POST: Create a threaded reply to a message
+    
+    Request body:
+    {
+        "content": str,
+        "sender": str ("user" or "ai")
+    }
+    
+    Returns: Created reply message
+    """
+    try:
+        parent_message = Message.objects.get(id=pk)
+    except Message.DoesNotExist:
+        return Response(
+            {"error": "Parent message not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    content = request.data.get('content')
+    sender = request.data.get('sender', 'user')
+    
+    if not content:
+        return Response(
+            {"error": "content is required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Create reply message
+    reply = Message.objects.create(
+        conversation=parent_message.conversation,
+        content=content,
+        sender=sender,
+        parent_message=parent_message
+    )
+    
+    return Response(MessageSerializer(reply).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+def get_analytics_trends(request):
+    """
+    GET: Get conversation analytics and trends
+    
+    Query params:
+    - days: number of days to analyze (default: 30)
+    
+    Returns: Analytics data
+    """
+    days = int(request.GET.get('days', 30))
+    
+    analytics_service = AnalyticsService()
+    trends = analytics_service.get_conversation_trends(days)
+    
+    return Response(trends, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def get_conversation_stats(request, pk):
+    """
+    GET: Get detailed statistics for a specific conversation
+    
+    Returns: Conversation statistics
+    """
+    analytics_service = AnalyticsService()
+    stats = analytics_service.get_conversation_stats(pk)
+    
+    if not stats:
+        return Response(
+            {"error": "Conversation not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    return Response(stats, status=status.HTTP_200_OK)

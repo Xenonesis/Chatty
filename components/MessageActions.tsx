@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, ThumbsUp, ThumbsDown, Share2, RotateCw, MoreHorizontal, Flag, Check } from 'lucide-react';
+import { Copy, ThumbsUp, ThumbsDown, Share2, RotateCw, MoreHorizontal, Flag, Check, Bookmark, Heart, Laugh, Frown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -22,10 +22,25 @@ interface MessageActionsProps {
   isUser: boolean;
   onRetry?: () => void;
   onRegenerate?: () => void;
+  isBookmarked?: boolean;
+  reactions?: Record<string, number>;
+  onBookmarkToggle?: () => void;
+  onReaction?: (reaction: string) => void;
 }
 
-export default function MessageActions({ messageId, content, isUser, onRetry, onRegenerate }: MessageActionsProps) {
+export default function MessageActions({ 
+  messageId, 
+  content, 
+  isUser, 
+  onRetry, 
+  onRegenerate,
+  isBookmarked = false,
+  reactions = {},
+  onBookmarkToggle,
+  onReaction 
+}: MessageActionsProps) {
   const [copied, setCopied] = useState(false);
+  const [showReactions, setShowReactions] = useState(false);
   const [liked, setLiked] = useState<boolean | null>(null);
 
   const handleCopy = async () => {
@@ -69,29 +84,125 @@ export default function MessageActions({ messageId, content, isUser, onRetry, on
     alert('Message reported. Thank you for your feedback.');
   };
 
+  const availableReactions = [
+    { name: 'thumbs_up', icon: ThumbsUp, label: 'Like' },
+    { name: 'heart', icon: Heart, label: 'Love' },
+    { name: 'laugh', icon: Laugh, label: 'Funny' },
+    { name: 'thumbs_down', icon: ThumbsDown, label: 'Dislike' },
+  ];
+
+  const handleReactionClick = (reactionName: string) => {
+    if (onReaction && messageId) {
+      onReaction(reactionName);
+    }
+  };
+
+  const handleBookmark = () => {
+    if (onBookmarkToggle && messageId) {
+      onBookmarkToggle();
+    }
+  };
+
   return (
-    <TooltipProvider delayDuration={300}>
-      <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        {/* Copy */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={handleCopy}
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-500" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{copied ? 'Copied!' : 'Copy'}</p>
-          </TooltipContent>
-        </Tooltip>
+    <div className="space-y-2 mt-2">
+      {/* Reactions Display */}
+      {Object.keys(reactions).length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {Object.entries(reactions).map(([reaction, count]) => {
+            const reactionConfig = availableReactions.find(r => r.name === reaction);
+            if (!reactionConfig || count === 0) return null;
+            const Icon = reactionConfig.icon;
+            return (
+              <div
+                key={reaction}
+                className="flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-xs"
+              >
+                <Icon className="w-3 h-3" />
+                <span>{count}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <TooltipProvider delayDuration={300}>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Copy */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleCopy}
+              >
+                {copied ? (
+                  <Check className="h-3.5 w-3.5 text-green-500" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{copied ? 'Copied!' : 'Copy'}</p>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Bookmark Button */}
+          {messageId && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`h-7 w-7 ${isBookmarked ? 'text-yellow-500' : ''}`}
+                  onClick={handleBookmark}
+                >
+                  <Bookmark className={`h-3.5 w-3.5 ${isBookmarked ? 'fill-current' : ''}`} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isBookmarked ? 'Remove bookmark' : 'Bookmark'}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Reaction Button */}
+          {messageId && (
+            <DropdownMenu open={showReactions} onOpenChange={setShowReactions}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                    >
+                      <Heart className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>React</p>
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent>
+                {availableReactions.map((reaction) => {
+                  const Icon = reaction.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={reaction.name}
+                      onClick={() => handleReactionClick(reaction.name)}
+                    >
+                      <Icon className="w-4 h-4 mr-2" />
+                      {reaction.label}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
         {/* Like - Only for AI messages */}
         {!isUser && (
@@ -215,7 +326,8 @@ export default function MessageActions({ messageId, content, isUser, onRetry, on
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
-    </TooltipProvider>
+        </div>
+      </TooltipProvider>
+    </div>
   );
 }

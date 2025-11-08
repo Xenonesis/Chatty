@@ -10,6 +10,10 @@ export interface Message {
   content: string;
   sender: 'user' | 'ai';
   timestamp: string;
+  reactions?: Record<string, number>;
+  is_bookmarked?: boolean;
+  bookmarked_at?: string | null;
+  parent_message?: number | null;
 }
 
 export interface Conversation {
@@ -174,6 +178,50 @@ class APIClient {
 
   async getConfiguredProviders(): Promise<{ providers: Array<{ id: string; name: string }>; current_provider: string }> {
     return this.request('/settings/ai/providers/');
+  }
+
+  // Export endpoints
+  async exportConversation(id: number, format: 'json' | 'markdown' | 'pdf'): Promise<Blob> {
+    const response = await fetch(`${this.baseURL}/conversations/${id}/export/${format}/`);
+    if (!response.ok) {
+      throw new Error(`Failed to export conversation: ${response.status}`);
+    }
+    return response.blob();
+  }
+
+  // Sharing endpoints
+  async createShareLink(id: number, expiryDays: number = 7): Promise<{ share_token: string; share_url: string; expires_at: string }> {
+    return this.request(`/conversations/${id}/share/`, {
+      method: 'POST',
+      body: JSON.stringify({ expiry_days: expiryDays }),
+    });
+  }
+
+  async getSharedConversation(token: string): Promise<any> {
+    return this.request(`/shared/${token}/`);
+  }
+
+  // Message actions
+  async toggleBookmark(messageId: number): Promise<{ message_id: number; is_bookmarked: boolean; bookmarked_at: string | null }> {
+    return this.request(`/messages/${messageId}/bookmark/`, {
+      method: 'POST',
+    });
+  }
+
+  async addReaction(messageId: number, reaction: string): Promise<{ message_id: number; reactions: Record<string, number> }> {
+    return this.request(`/messages/${messageId}/react/`, {
+      method: 'POST',
+      body: JSON.stringify({ reaction }),
+    });
+  }
+
+  // Analytics endpoints
+  async getAnalyticsTrends(days: number = 30): Promise<any> {
+    return this.request(`/analytics/trends/?days=${days}`);
+  }
+
+  async getConversationStats(id: number): Promise<any> {
+    return this.request(`/conversations/${id}/stats/`);
   }
 }
 

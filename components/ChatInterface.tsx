@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, Plus, FileText, Send, Loader2, Sparkles, CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react';
+import { MessageCircle, Plus, FileText, Send, Loader2, Sparkles, CheckCircle, XCircle, AlertTriangle, Info, Volume2, VolumeX } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import MessageActions from '@/components/MessageActions';
+import ExportShareButtons from '@/components/ExportShareButtons';
+import VoiceInput from '@/components/VoiceInput';
+import { voiceOutput } from '@/lib/voiceOutput';
 
 interface ChatInterfaceProps {
   conversationId: number | null;
@@ -43,6 +46,7 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null);
   const [endedConversationDialog, setEndedConversationDialog] = useState<{ open: boolean; message: string } | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   
   // Intelligence tracking
   const { trackBehavior, analyzeConversation } = useIntelligence();
@@ -320,6 +324,18 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       // Update local state with the saved messages
       setMessages((prev) => [...prev, response.user_message, response.ai_message]);
       
+      // Auto-speak AI response if voice output is enabled
+      if (voiceOutput.isSupported() && response.ai_message?.content) {
+        try {
+          setIsSpeaking(true);
+          await voiceOutput.speak(response.ai_message.content);
+          setIsSpeaking(false);
+        } catch (error) {
+          console.log('Voice output skipped:', error);
+          setIsSpeaking(false);
+        }
+      }
+      
       // Track behavior for intelligence learning
       trackBehavior('message_sent', {
         conversationId: currentConversationId,
@@ -487,16 +503,19 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
             <span className="hidden xs:inline ml-1">New Chat</span>
           </Button>
           {conversationId && messages.length > 0 && (
-            <Button
-              onClick={handleGenerateSummary}
-              variant="outline"
-              size="sm"
-              disabled={isLoading}
-              className="text-xs sm:text-sm flex-1 sm:flex-none"
-            >
-              <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden md:inline ml-1">Summary</span>
-            </Button>
+            <>
+              <Button
+                onClick={handleGenerateSummary}
+                variant="outline"
+                size="sm"
+                disabled={isLoading}
+                className="text-xs sm:text-sm flex-1 sm:flex-none"
+              >
+                <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden md:inline ml-1">Summary</span>
+              </Button>
+              <ExportShareButtons conversationId={conversationId} />
+            </>
           )}
           {conversationId && conversationStatus === 'active' && (
             <Button
@@ -508,6 +527,20 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
             >
               <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
               <span className="hidden md:inline ml-1">End</span>
+            </Button>
+          )}
+          {voiceOutput.isSupported() && isSpeaking && (
+            <Button
+              onClick={() => {
+                voiceOutput.stop();
+                setIsSpeaking(false);
+              }}
+              variant="outline"
+              size="sm"
+              className="text-xs sm:text-sm"
+            >
+              <VolumeX className="w-3 h-3 sm:w-4 sm:h-4 animate-pulse" />
+              <span className="hidden md:inline ml-1">Stop</span>
             </Button>
           )}
         </div>
@@ -587,6 +620,37 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
                   messageId={message.id}
                   content={message.content}
                   isUser={message.sender === 'user'}
+                  isBookmarked={message.is_bookmarked}
+                  reactions={message.reactions}
+                  onBookmarkToggle={async () => {
+                    if (!message.id) return;
+                    try {
+                      const result = await api.toggleBookmark(message.id);
+                      setMessages(prev => prev.map(m => 
+                        m.id === message.id 
+                          ? { ...m, is_bookmarked: result.is_bookmarked, bookmarked_at: result.bookmarked_at }
+                          : m
+                      ));
+                      showNotification('success', result.is_bookmarked ? 'Message bookmarked!' : 'Bookmark removed', 2000);
+                    } catch (error) {
+                      console.error('Failed to toggle bookmark:', error);
+                      showNotification('error', 'Failed to update bookmark');
+                    }
+                  }}
+                  onReaction={async (reaction) => {
+                    if (!message.id) return;
+                    try {
+                      const result = await api.addReaction(message.id, reaction);
+                      setMessages(prev => prev.map(m => 
+                        m.id === message.id 
+                          ? { ...m, reactions: result.reactions }
+                          : m
+                      ));
+                    } catch (error) {
+                      console.error('Failed to add reaction:', error);
+                      showNotification('error', 'Failed to add reaction');
+                    }
+                  }}
                   onRetry={message.sender === 'user' ? () => {
                     setInputMessage(message.content);
                   } : undefined}
@@ -676,6 +740,10 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
               placeholder={conversationStatus === 'ended' ? 'Conversation ended...' : 'Type message...'}
               disabled={isLoading || availableProviders.length === 0 || conversationStatus === 'ended'}
               className="flex-1 text-sm sm:text-base"
+            />
+            <VoiceInput
+              onTranscript={(text) => setInputMessage(prev => prev ? prev + ' ' + text : text)}
+              disabled={isLoading || availableProviders.length === 0 || conversationStatus === 'ended'}
             />
             <Button
               type="submit"

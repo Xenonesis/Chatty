@@ -12,9 +12,22 @@ urlpatterns = [
     path('conversations/<int:pk>/', views.ConversationDetailView.as_view(), name='conversation-detail'),
     path('conversations/<int:pk>/end/', views.end_conversation, name='conversation-end'),
     path('conversations/<int:pk>/generate-summary/', views.generate_summary, name='conversation-generate-summary'),
+    path('conversations/<int:pk>/export/<str:format>/', views.export_conversation, name='conversation-export'),
+    path('conversations/<int:pk>/export/<str:format>', views.export_conversation, name='conversation-export-no-slash'),
+    path('conversations/<int:pk>/share/', views.create_share_link, name='conversation-share'),
+    path('conversations/<int:pk>/stats/', views.get_conversation_stats, name='conversation-stats'),
     
     # Message endpoints
     path('messages/send/', views.send_message, name='message-send'),
+    path('messages/<int:pk>/bookmark/', views.toggle_bookmark, name='message-bookmark'),
+    path('messages/<int:pk>/react/', views.add_reaction, name='message-react'),
+    path('messages/<int:pk>/reply/', views.reply_to_message, name='message-reply'),
+    
+    # Shared conversation endpoint
+    path('shared/<str:token>/', views.get_shared_conversation, name='shared-conversation'),
+    
+    # Analytics endpoint
+    path('analytics/trends/', views.get_analytics_trends, name='analytics-trends'),
     
     # Intelligence endpoints (legacy)
     path('intelligence/query/', views.query_intelligence, name='intelligence-query'),

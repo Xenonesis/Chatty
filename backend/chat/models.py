@@ -61,11 +61,26 @@ class Message(models.Model):
     sender = models.CharField(max_length=10, choices=SENDER_CHOICES)
     timestamp = models.DateTimeField(auto_now_add=True)
     
+    # New fields for reactions and bookmarking
+    reactions = models.JSONField(default=dict, blank=True)  # {'thumbs_up': 5, 'heart': 2, etc.}
+    is_bookmarked = models.BooleanField(default=False)
+    bookmarked_at = models.DateTimeField(blank=True, null=True)
+    
+    # New field for threading/branching
+    parent_message = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='replies'
+    )
+    
     class Meta:
         ordering = ['timestamp']
         indexes = [
             models.Index(fields=['conversation', 'timestamp']),
             models.Index(fields=['sender']),
+            models.Index(fields=['is_bookmarked']),
         ]
     
     def __str__(self):

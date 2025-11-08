@@ -5,14 +5,15 @@ import ChatInterface from '@/components/ChatInterface';
 import ConversationsList from '@/components/ConversationsList';
 import IntelligenceQuery from '@/components/IntelligenceQuery';
 import IntelligenceProfile from '@/components/IntelligenceProfile';
+import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import SettingsModal from '@/components/SettingsModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { MessageCircle, History, Brain, Settings, User } from 'lucide-react';
+import { MessageCircle, History, Brain, Settings, User, BarChart3 } from 'lucide-react';
 
 export default function Home() {
-  const [activeView, setActiveView] = useState<'chat' | 'conversations' | 'intelligence' | 'profile'>('chat');
+  const [activeView, setActiveView] = useState<'chat' | 'conversations' | 'intelligence' | 'profile' | 'analytics'>('chat');
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -85,6 +86,19 @@ export default function Home() {
                   Profile
                 </div>
               </div>
+              <div className="relative group">
+                <Button
+                  onClick={() => setActiveView('analytics')}
+                  variant={activeView === 'analytics' ? 'default' : 'outline'}
+                  size="icon"
+                  className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 transition-all duration-200 hover:scale-110"
+                >
+                  <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
+                </Button>
+                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-lg hidden md:block">
+                  Analytics
+                </div>
+              </div>
               <div className="h-4 sm:h-6 w-px bg-border mx-0.5 sm:mx-1"></div>
               <ThemeToggle />
               <div className="relative group">
@@ -124,6 +138,7 @@ export default function Home() {
           )}
           {activeView === 'intelligence' && <IntelligenceQuery />}
           {activeView === 'profile' && <IntelligenceProfile />}
+          {activeView === 'analytics' && <AnalyticsDashboard />}
         </div>
       </div>
 

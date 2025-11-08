@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from django.conf import settings
 import os
 import requests
+from pathlib import Path
 
 
 @api_view(['GET'])
@@ -77,6 +78,43 @@ def get_configured_providers(request):
     }, status=status.HTTP_200_OK)
 
 
+def update_env_file(key, value):
+    """
+    Update or add a key-value pair in the .env file
+    """
+    # Find the .env file (should be in the project root, one level up from backend)
+    env_path = Path(__file__).resolve().parent.parent.parent / '.env'
+    
+    # If .env doesn't exist, create it
+    if not env_path.exists():
+        env_path.touch()
+    
+    # Read existing content
+    lines = []
+    key_found = False
+    
+    if env_path.exists():
+        with open(env_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+    
+    # Update or add the key
+    new_lines = []
+    for line in lines:
+        if line.strip().startswith(f'{key}='):
+            new_lines.append(f'{key}={value}\n')
+            key_found = True
+        else:
+            new_lines.append(line)
+    
+    # If key wasn't found, add it
+    if not key_found:
+        new_lines.append(f'{key}={value}\n')
+    
+    # Write back to file
+    with open(env_path, 'w', encoding='utf-8') as f:
+        f.writelines(new_lines)
+
+
 @api_view(['GET', 'POST'])
 def manage_ai_settings(request):
     """
@@ -121,51 +159,61 @@ def manage_ai_settings(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Update environment variables (temporary - in production, use database)
-        # Note: These changes only affect the current process
+        # Update environment variables and persist to .env file
         os.environ['AI_PROVIDER'] = provider
         settings.AI_PROVIDER = provider
+        update_env_file('AI_PROVIDER', provider)
         
         if 'model' in api_settings:
-            os.environ['AI_MODEL'] = api_settings['model']
-            settings.AI_MODEL = api_settings['model']
+            model = api_settings['model']
+            os.environ['AI_MODEL'] = model
+            settings.AI_MODEL = model
+            update_env_file('AI_MODEL', model)
         
         if 'apiKey' in api_settings:
             api_key = api_settings['apiKey']
             if provider == 'openai':
                 os.environ['OPENAI_API_KEY'] = api_key
                 settings.OPENAI_API_KEY = api_key
+                update_env_file('OPENAI_API_KEY', api_key)
                 print(f"Set OPENAI_API_KEY: {api_key[:10]}...")
             elif provider == 'anthropic':
                 os.environ['ANTHROPIC_API_KEY'] = api_key
                 settings.ANTHROPIC_API_KEY = api_key
+                update_env_file('ANTHROPIC_API_KEY', api_key)
                 print(f"Set ANTHROPIC_API_KEY: {api_key[:10]}...")
             elif provider == 'google':
                 os.environ['GOOGLE_API_KEY'] = api_key
                 settings.GOOGLE_API_KEY = api_key
+                update_env_file('GOOGLE_API_KEY', api_key)
                 print(f"Set GOOGLE_API_KEY: {api_key[:10]}...")
             elif provider == 'openrouter':
                 os.environ['OPENROUTER_API_KEY'] = api_key
                 settings.OPENROUTER_API_KEY = api_key
+                update_env_file('OPENROUTER_API_KEY', api_key)
                 print(f"Set OPENROUTER_API_KEY: {api_key[:10]}...")
             elif provider == 'lmstudio':
                 os.environ['LM_STUDIO_API_KEY'] = api_key
                 settings.LM_STUDIO_API_KEY = api_key
+                update_env_file('LM_STUDIO_API_KEY', api_key)
                 print(f"Set LM_STUDIO_API_KEY: {api_key[:10]}...")
         
         if 'baseUrl' in api_settings:
             if provider == 'lmstudio':
-                os.environ['LM_STUDIO_BASE_URL'] = api_settings['baseUrl']
-                settings.LM_STUDIO_BASE_URL = api_settings['baseUrl']
+                base_url = api_settings['baseUrl']
+                os.environ['LM_STUDIO_BASE_URL'] = base_url
+                settings.LM_STUDIO_BASE_URL = base_url
+                update_env_file('LM_STUDIO_BASE_URL', base_url)
             elif provider == 'ollama':
-                os.environ['OLLAMA_BASE_URL'] = api_settings['baseUrl']
-                settings.OLLAMA_BASE_URL = api_settings['baseUrl']
+                base_url = api_settings['baseUrl']
+                os.environ['OLLAMA_BASE_URL'] = base_url
+                settings.OLLAMA_BASE_URL = base_url
+                update_env_file('OLLAMA_BASE_URL', base_url)
         
         return Response(
             {
-                "message": "Settings updated successfully",
-                "provider": provider,
-                "note": "Settings are temporary and will reset on server restart. For persistent settings, configure environment variables or use a database."
+                "message": "Settings updated successfully and saved to .env file",
+                "provider": provider
             },
             status=status.HTTP_200_OK
         )

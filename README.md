@@ -1,4 +1,4 @@
-# ChatSumm – AI Conversation Intelligence Platform
+# Chatty – AI Conversation Intelligence Platform
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9+-blue.svg)
@@ -6,7 +6,7 @@
 ![Next.js](https://img.shields.io/badge/next.js-14+-black.svg)
 ![React](https://img.shields.io/badge/react-19-blue.svg)
 
-ChatSumm is a full-stack web application that delivers real-time AI-assisted conversations, long-term conversation memory, and intelligence tooling such as semantic search, summarisation, and natural-language querying over historical threads. The project pairs a Django REST API with a modern Next.js frontend and supports multiple LLM providers including OpenAI, Anthropic Claude, Google Gemini, and locally hosted LM Studio models.
+Chatty is a full-stack web application that delivers real-time AI-assisted conversations, long-term conversation memory, and intelligence tooling such as semantic search, summarisation, and natural-language querying over historical threads. The project pairs a Django REST API with a modern Next.js frontend and supports multiple LLM providers including OpenAI, Anthropic Claude, Google Gemini, and locally hosted LM Studio models.
 
 ---
 
@@ -33,7 +33,7 @@ ChatSumm is a full-stack web application that delivers real-time AI-assisted con
 
 ## Overview
 
-Bring advanced conversation intelligence to your team. ChatSumm captures every message exchanged with Large Language Models (LLMs), stores them in PostgreSQL, and layers intelligence features—summaries, semantic search, and contextual question answering—on top of that history. The frontend delivers a polished, responsive interface, while the backend exposes a clean REST API for integrations or automation.
+Bring advanced conversation intelligence to your team. Chatty captures every message exchanged with Large Language Models (LLMs), stores them in PostgreSQL, and layers intelligence features—summaries, semantic search, and contextual question answering—on top of that history. The frontend delivers a polished, responsive interface, while the backend exposes a clean REST API for integrations or automation.
 
 ## What's New
 

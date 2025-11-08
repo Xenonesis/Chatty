@@ -16,17 +16,17 @@ export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <main className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-slate-100 dark:from-zinc-950 dark:via-neutral-900 dark:to-stone-950">
       {/* Header */}
-      <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md shadow-lg border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+      <header className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl shadow-lg border-b border-gray-200 dark:border-zinc-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 bg-gradient-to-br from-gray-600 via-gray-500 to-slate-600 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white text-xl font-bold">C</span>
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-700 via-slate-600 to-zinc-700 dark:from-gray-300 dark:via-slate-300 dark:to-zinc-300 bg-clip-text text-transparent">
                   Chatty
                 </h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400">AI Conversation Platform</p>

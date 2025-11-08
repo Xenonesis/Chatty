@@ -5,6 +5,7 @@ import ChatInterface from '@/components/ChatInterface';
 import ConversationsList from '@/components/ConversationsList';
 import IntelligenceQuery from '@/components/IntelligenceQuery';
 import SettingsModal from '@/components/SettingsModal';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MessageCircle, History, Brain, Settings } from 'lucide-react';
@@ -32,7 +33,7 @@ export default function Home() {
               </div>
             </div>
 
-            <nav className="flex gap-3">
+            <nav className="flex items-center gap-3">
               <Button
                 onClick={() => setActiveView('chat')}
                 variant={activeView === 'chat' ? 'default' : 'outline'}
@@ -57,6 +58,8 @@ export default function Home() {
                 <Brain className="w-4 h-4" />
                 Intelligence
               </Button>
+              <div className="h-6 w-px bg-border mx-1"></div>
+              <ThemeToggle />
               <Button
                 onClick={() => setIsSettingsOpen(true)}
                 variant="outline"

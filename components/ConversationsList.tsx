@@ -2,6 +2,21 @@
 
 import { useState, useEffect } from 'react';
 import { api, Conversation } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { RefreshCw, Search, Calendar, Clock, MessageCircle, Eye, Trash2, AlertTriangle, CheckCircle, XCircle, X, Loader2, Brain } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 interface ConversationsListProps {
   onSelectConversation: (id: number) => void;
@@ -11,38 +26,126 @@ export default function ConversationsList({ onSelectConversation }: Conversation
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [filteredConversations, setFilteredConversations] = useState<Conversation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [useSemanticSearch, setUseSemanticSearch] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<{ id: number; title: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     loadConversations();
   }, []);
 
   useEffect(() => {
+    // Unified search - local + AI automatically
+    if (!conversations || conversations.length === 0) {
+      setFilteredConversations([]);
+      return;
+    }
+
     if (searchQuery.trim() === '') {
       setFilteredConversations(conversations);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = conversations.filter(
-        (conv) =>
-          conv.title.toLowerCase().includes(query) ||
-          conv.ai_summary?.toLowerCase().includes(query)
-      );
-      setFilteredConversations(filtered);
+      setIsSearching(false);
+      return;
     }
+
+    const query = searchQuery.toLowerCase();
+    console.log('🔍 Unified Search - Query:', query);
+    
+    // Step 1: Local search (instant)
+    const localFiltered = conversations.filter((conv) => {
+      const title = conv.title?.toLowerCase() || '';
+      const summary = conv.ai_summary?.toLowerCase() || '';
+      const topics = conv.metadata?.topics?.join(' ').toLowerCase() || '';
+      const status = conv.status?.toLowerCase() || '';
+      
+      let messageContent = '';
+      if (conv.messages && Array.isArray(conv.messages)) {
+        messageContent = conv.messages
+          .map(m => m.content?.toLowerCase() || '')
+          .join(' ');
+      }
+      
+      const matches = 
+        title.includes(query) || 
+        summary.includes(query) || 
+        topics.includes(query) ||
+        status.includes(query) ||
+        messageContent.includes(query);
+      
+      if (matches) {
+        const matchedIn = [];
+        if (title.includes(query)) matchedIn.push('title');
+        if (summary.includes(query)) matchedIn.push('summary');
+        if (topics.includes(query)) matchedIn.push('topics');
+        if (messageContent.includes(query)) matchedIn.push('messages');
+        console.log('✓ Local match:', conv.title, '| Found in:', matchedIn.join(', '));
+      }
+      
+      return matches;
+    });
+    
+    console.log(`📊 Local results: ${localFiltered.length} of ${conversations.length}`);
+    setFilteredConversations(localFiltered);
+    
+    // Step 2: Enhance with AI automatically (debounced)
+    const timeoutId = setTimeout(() => {
+      performAISearch(query, localFiltered);
+    }, 500); // Wait 500ms after user stops typing
+    
+    return () => clearTimeout(timeoutId);
   }, [searchQuery, conversations]);
 
   const loadConversations = async () => {
     try {
       setIsLoading(true);
       const data = await api.getConversations();
-      setConversations(data);
-      setFilteredConversations(data);
+      console.log('Loaded conversations:', data?.length || 0, 'conversations');
+      setConversations(data || []);
+      setFilteredConversations(data || []);
     } catch (error) {
       console.error('Failed to load conversations:', error);
+      setConversations([]);
+      setFilteredConversations([]);
       alert('Failed to load conversations');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const performAISearch = async (query: string, localResults: Conversation[]) => {
+    if (!query.trim() || query.length < 2) {
+      return; // Skip AI search for very short queries
+    }
+
+    setIsSearching(true);
+    try {
+      console.log('🤖 AI Enhancement - Query:', query);
+      const response = await api.searchConversations(query, true);
+      console.log('🤖 AI results:', response.results.length);
+      
+      // Merge AI results with local results
+      const semanticIds = new Set(response.results.map(r => r.id));
+      const localIds = new Set(localResults.map(r => r.id));
+      
+      // Combine: AI results first (ranked by relevance) + local results not in AI
+      const combined = [
+        ...response.results,
+        ...localResults.filter(conv => !semanticIds.has(conv.id))
+      ];
+      
+      console.log(`📊 Combined: ${response.results.length} AI + ${localResults.length} local = ${combined.length} total`);
+      setFilteredConversations(combined);
+      
+    } catch (error) {
+      console.error('AI search failed:', error);
+      // Keep local results if AI search fails
+      console.log('📊 Using local results only');
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -53,6 +156,52 @@ export default function ConversationsList({ onSelectConversation }: Conversation
     } catch (error) {
       console.error('Failed to load conversation details:', error);
       alert('Failed to load conversation details');
+    }
+  };
+
+  const openDeleteDialog = (id: number, title: string) => {
+    setConversationToDelete({ id, title });
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!conversationToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await api.deleteConversation(conversationToDelete.id);
+      
+      // If the deleted conversation was selected, clear the selection
+      if (selectedConv?.id === conversationToDelete.id) {
+        setSelectedConv(null);
+      }
+      
+      // Reload conversations
+      await loadConversations();
+      
+      // Show success notification
+      setNotification({
+        type: 'success',
+        message: `"${conversationToDelete.title}" deleted successfully`
+      });
+      
+      // Auto-hide notification after 3 seconds
+      setTimeout(() => setNotification(null), 3000);
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      
+      // Show error notification
+      setNotification({
+        type: 'error',
+        message: 'Failed to delete conversation. Please try again.'
+      });
+      
+      // Auto-hide notification after 5 seconds
+      setTimeout(() => setNotification(null), 5000);
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setConversationToDelete(null);
     }
   };
 
@@ -67,206 +216,302 @@ export default function ConversationsList({ onSelectConversation }: Conversation
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <>
+      {/* Notification Toast */}
+      {notification && (
+        <div className="fixed top-4 right-2 sm:right-4 left-2 sm:left-auto z-50 animate-slideDown max-w-sm sm:max-w-md">
+          <Card className={`shadow-lg ${notification.type === 'success' ? 'border-green-500' : 'border-red-500'}`}>
+            <CardContent className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4">
+              {notification.type === 'success' ? (
+                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
+              ) : (
+                <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 flex-shrink-0" />
+              )}
+              <p className="font-medium text-xs sm:text-sm">{notification.message}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Delete Conversation
+            </DialogTitle>
+            <DialogDescription className="pt-4">
+              Are you sure you want to delete{' '}
+              <span className="font-semibold text-foreground">"{conversationToDelete?.title}"</span>?
+              <br />
+              <br />
+              This will permanently delete the conversation and all its messages. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
       {/* Conversations List */}
       <div className="lg:col-span-2">
-        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <span className="text-2xl">📚</span>
-                Conversation History
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {filteredConversations?.length || 0} conversation{filteredConversations?.length !== 1 ? 's' : ''} found
-              </p>
+        <Card>
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+              <div>
+                <CardTitle className="text-lg sm:text-xl md:text-2xl flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <span className="hidden sm:inline">Conversation History</span>
+                  <span className="sm:hidden">History</span>
+                </CardTitle>
+                <CardDescription className="mt-1 text-xs sm:text-sm">
+                  {filteredConversations?.length || 0} conversation{filteredConversations?.length !== 1 ? 's' : ''} found
+                  {searchQuery && (
+                    <span className="ml-2 text-muted-foreground">
+                      (searching for "{searchQuery}")
+                    </span>
+                  )}
+                </CardDescription>
+              </div>
+              <Button
+                onClick={loadConversations}
+                variant="default"
+                size="sm"
+                className="w-full sm:w-auto"
+              >
+                <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="ml-1">Refresh</span>
+              </Button>
             </div>
-            <button
-              onClick={loadConversations}
-              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-md font-medium flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Refresh
-            </button>
-          </div>
+          </CardHeader>
 
-          {/* Search */}
-          <div className="mb-6">
-            <div className="relative">
-              <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by title or summary..."
-                className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         placeholder:text-gray-400 dark:placeholder:text-gray-500
-                         transition-all"
-              />
+          {/* Unified Search with Auto AI Enhancement */}
+          <CardContent className="p-4 sm:p-6">
+            <div className="space-y-3 mb-4 sm:mb-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSearchQuery(value);
+                  }}
+                  placeholder="Search everywhere: title, summary, topics, messages..."
+                  className="pl-8 sm:pl-10 pr-32 text-sm sm:text-base"
+                />
+                {searchQuery && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                    {isSearching && (
+                      <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin text-primary" />
+                    )}
+                    <Badge variant="secondary" className="text-xs">
+                      {filteredConversations.length}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 hover:bg-muted"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setFilteredConversations(conversations);
+                      }}
+                      title="Clear search"
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {searchQuery && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Brain className="w-3 h-3" />
+                  <span>
+                    {isSearching 
+                      ? 'Enhancing with AI...' 
+                      : 'Searching everywhere with AI enhancement'}
+                  </span>
+                </div>
+              )}
             </div>
-          </div>
 
           {isLoading ? (
             <div className="text-center py-16 animate-fadeIn">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-600"></div>
-              <p className="mt-4 text-gray-600 dark:text-gray-400 font-medium">Loading conversations...</p>
+              <RefreshCw className="inline-block animate-spin h-12 w-12 text-primary" />
+              <p className="mt-4 text-muted-foreground font-medium">Loading conversations...</p>
             </div>
           ) : !filteredConversations || filteredConversations.length === 0 ? (
             <div className="text-center py-16 animate-fadeIn">
-              <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-full flex items-center justify-center">
-                <span className="text-5xl">📭</span>
+              <div className="w-24 h-24 mx-auto mb-6 bg-muted rounded-full flex items-center justify-center">
+                <MessageCircle className="w-12 h-12 text-muted-foreground" />
               </div>
-              <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <p className="text-lg font-medium mb-2">
                 {searchQuery ? 'No conversations found' : 'No conversations yet'}
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 {searchQuery ? 'Try a different search term.' : 'Start chatting to see your conversations here!'}
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {Array.isArray(filteredConversations) && filteredConversations.map((conversation, index) => (
-                <div
+                <Card
                   key={conversation.id}
-                  className="p-5 border-2 border-gray-200 dark:border-gray-700 rounded-xl
-                           hover:border-blue-400 dark:hover:border-blue-500 transition-all cursor-pointer
-                           bg-white dark:bg-gray-800 hover:shadow-lg transform hover:-translate-y-0.5
-                           animate-slideUp"
+                  className="hover:border-primary transition-all cursor-pointer hover:shadow-lg animate-slideUp"
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
-                  <div className="flex items-start justify-between mb-3">
+                <CardContent className="p-3 sm:p-4 md:p-5">
+                  <div className="flex items-start justify-between mb-2 sm:mb-3">
                     <div className="flex-1">
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                        <span className="text-xl">💬</span>
-                        {conversation.title}
+                      <h3 className="text-base sm:text-lg font-bold mb-1.5 sm:mb-2 flex items-center gap-2">
+                        <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                        <span className="truncate">{conversation.title}</span>
                       </h3>
-                      <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
+                          <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
                           {new Date(conversation.start_timestamp).toLocaleDateString()}
                         </span>
                         <span className="flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                          <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
                           {new Date(conversation.start_timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          conversation.status === 'active'
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-                        }`}>
+                        <Badge variant={conversation.status === 'active' ? 'default' : 'secondary'} className="text-xs">
                           {conversation.status === 'active' ? '🟢 Active' : '⚫ Ended'}
-                        </span>
+                        </Badge>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400 mb-3 bg-gray-50 dark:bg-gray-900/30 rounded-lg p-3">
-                    <span className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3 bg-muted/50 rounded-lg p-2 sm:p-3">
+                    <span className="flex items-center gap-1.5 sm:gap-2">
+                      <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                       <strong>{conversation.message_count || 0}</strong> messages
                     </span>
-                    <span className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                    <span className="flex items-center gap-1.5 sm:gap-2">
+                      <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
                       {formatDuration(conversation.duration)}
                     </span>
                   </div>
 
                   {conversation.ai_summary && (
-                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 line-clamp-2 italic bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg border-l-4 border-blue-400">
+                    <p className="text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 italic bg-primary/5 p-2 sm:p-3 rounded-lg border-l-4 border-primary">
                       "{conversation.ai_summary}"
                     </p>
                   )}
 
-                  <div className="flex gap-2">
-                    <button
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                    <Button
                       onClick={() => onSelectConversation(conversation.id)}
-                      className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all transform hover:scale-105 shadow-md flex items-center justify-center gap-2"
+                      className="flex-1 min-w-[120px]"
+                      variant="default"
+                      size="sm"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      Continue Chat
-                    </button>
-                    <button
+                      <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="ml-1 text-xs sm:text-sm">Continue</span>
+                    </Button>
+                    <Button
                       onClick={() => viewConversationDetails(conversation.id)}
-                      className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg
-                               hover:bg-gray-200 dark:hover:bg-gray-600 transition-all transform hover:scale-105 flex items-center gap-2"
+                      variant="outline"
+                      size="sm"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                      Details
-                    </button>
+                      <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline ml-1">Details</span>
+                    </Button>
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDeleteDialog(conversation.id, conversation.title);
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="hover:bg-destructive hover:text-destructive-foreground"
+                    >
+                      <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                    </Button>
                   </div>
-                </div>
+                </CardContent>
+                </Card>
               ))}
             </div>
           )}
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Conversation Details Panel */}
       <div className="lg:col-span-1">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 sticky top-8">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-            Conversation Details
-          </h3>
-
+        <Card className="sticky top-20 sm:top-24 lg:top-8">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Conversation Details</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6">
           {selectedConv ? (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Title</label>
-                <p className="text-gray-900 dark:text-white">{selectedConv.title}</p>
+                <label className="text-sm font-medium text-muted-foreground">Title</label>
+                <p className="font-medium">{selectedConv.title}</p>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Status</label>
-                <p className="text-gray-900 dark:text-white capitalize">{selectedConv.status}</p>
+                <label className="text-sm font-medium text-muted-foreground">Status</label>
+                <Badge variant={selectedConv.status === 'active' ? 'default' : 'secondary'} className="capitalize">
+                  {selectedConv.status}
+                </Badge>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Messages</label>
-                <p className="text-gray-900 dark:text-white">{selectedConv.message_count || 0}</p>
+                <label className="text-sm font-medium text-muted-foreground">Messages</label>
+                <p className="font-medium">{selectedConv.message_count || 0}</p>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Duration</label>
-                <p className="text-gray-900 dark:text-white">{formatDuration(selectedConv.duration)}</p>
+                <label className="text-sm font-medium text-muted-foreground">Duration</label>
+                <p className="font-medium">{formatDuration(selectedConv.duration)}</p>
               </div>
 
               {selectedConv.ai_summary && (
                 <div>
-                  <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Summary</label>
-                  <p className="text-gray-900 dark:text-white text-sm">{selectedConv.ai_summary}</p>
+                  <label className="text-sm font-medium text-muted-foreground">Summary</label>
+                  <p className="text-sm">{selectedConv.ai_summary}</p>
                 </div>
               )}
 
               {selectedConv.metadata?.topics && (
                 <div>
-                  <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Topics</label>
+                  <label className="text-sm font-medium text-muted-foreground">Topics</label>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {selectedConv.metadata.topics.map((topic: string, idx: number) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded"
-                      >
+                      <Badge key={idx} variant="secondary">
                         {topic}
-                      </span>
+                      </Badge>
                     ))}
                   </div>
                 </div>
@@ -274,34 +519,33 @@ export default function ConversationsList({ onSelectConversation }: Conversation
 
               {selectedConv.messages && selectedConv.messages.length > 0 && (
                 <div>
-                  <label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 block">
+                  <label className="text-sm font-medium text-muted-foreground mb-2 block">
                     Recent Messages
                   </label>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {selectedConv.messages.slice(0, 5).map((msg) => (
-                      <div
-                        key={msg.id}
-                        className="p-2 bg-gray-50 dark:bg-gray-700 rounded text-xs"
-                      >
-                        <div className="font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                      <Card key={msg.id} className="p-2">
+                        <div className="font-semibold text-sm mb-1">
                           {msg.sender === 'user' ? '👤 You' : '🤖 AI'}
                         </div>
-                        <p className="text-gray-600 dark:text-gray-400 line-clamp-3">
+                        <p className="text-xs text-muted-foreground line-clamp-3">
                           {msg.content}
                         </p>
-                      </div>
+                      </Card>
                     ))}
                   </div>
                 </div>
               )}
             </div>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+            <p className="text-muted-foreground text-center py-8">
               Select a conversation to view details
             </p>
           )}
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
+    </>
   );
 }

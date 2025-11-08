@@ -2,6 +2,25 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { api, Message } from '@/lib/api';
+import { useIntelligence } from '@/lib/useIntelligence';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { MessageCircle, Plus, FileText, Send, Loader2, Sparkles, CheckCircle, XCircle, AlertTriangle, Info, Volume2, VolumeX } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import MessageActions from '@/components/MessageActions';
+import ExportShareButtons from '@/components/ExportShareButtons';
+import VoiceInput from '@/components/VoiceInput';
+import { voiceOutput } from '@/lib/voiceOutput';
 
 interface ChatInterfaceProps {
   conversationId: number | null;
@@ -19,9 +38,18 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationTitle, setConversationTitle] = useState('');
+  const [conversationSummary, setConversationSummary] = useState<string>('');
+  const [conversationStatus, setConversationStatus] = useState<string>('active');
   const [availableProviders, setAvailableProviders] = useState<AIProvider[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string>('');
+  const [selectedModel, setSelectedModel] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null);
+  const [endedConversationDialog, setEndedConversationDialog] = useState<{ open: boolean; message: string } | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  
+  // Intelligence tracking
+  const { trackBehavior, analyzeConversation } = useIntelligence();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -64,39 +92,146 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
 
   const loadConfiguredProviders = async () => {
     try {
-      const response = await api.getConfiguredProviders();
-      console.log('Loaded providers:', response);
-      setAvailableProviders(response.providers);
-      
-      // Check localStorage for user's last selected provider
+      // First check localStorage for user's configured provider and model
       const savedProvider = localStorage.getItem('ai_provider');
-      console.log('Saved provider from localStorage:', savedProvider);
-      console.log('Current provider from backend:', response.current_provider);
+      const savedSettings = localStorage.getItem('ai_settings');
+      let savedModel = '';
       
-      // Use saved provider if it exists in available providers, otherwise use backend's current provider
-      if (savedProvider && response.providers.some(p => p.id === savedProvider)) {
-        console.log('Using saved provider:', savedProvider);
-        setSelectedProvider(savedProvider);
-      } else if (response.current_provider && response.providers.some(p => p.id === response.current_provider)) {
+      if (savedSettings) {
+        try {
+          const settings = JSON.parse(savedSettings);
+          savedModel = settings.model || '';
+        } catch (e) {
+          console.error('Failed to parse saved settings:', e);
+        }
+      }
+      
+      console.log('Saved provider from localStorage:', savedProvider);
+      console.log('Saved model from localStorage:', savedModel);
+      
+      // Get configured providers from backend
+      const response = await api.getConfiguredProviders();
+      console.log('Backend configured providers:', response);
+      
+      // If user has a saved provider in localStorage, add it to the list if not already there
+      const providers: AIProvider[] = [...response.providers.map(p => ({ ...p, model: null }))];
+      
+      if (savedProvider && !providers.some(p => p.id === savedProvider)) {
+        // Add the saved provider to the list (it's configured in localStorage but not in backend)
+        const providerNames: Record<string, string> = {
+          'openai': 'OpenAI (GPT-4, GPT-3.5)',
+          'anthropic': 'Anthropic (Claude)',
+          'google': 'Google (Gemini)',
+          'openrouter': 'OpenRouter',
+          'lmstudio': 'LM Studio (Local)',
+          'ollama': 'Ollama (Local)'
+        };
+        
+        providers.push({
+          id: savedProvider,
+          name: providerNames[savedProvider] || savedProvider,
+          model: savedModel || null
+        });
+        console.log('Added localStorage provider to list:', savedProvider);
+      }
+      
+      setAvailableProviders(providers);
+      
+      // Determine which provider to use
+      let providerToUse = '';
+      
+      if (savedProvider && providers.some(p => p.id === savedProvider)) {
+        // Use localStorage saved provider (highest priority)
+        providerToUse = savedProvider;
+        console.log('Using saved provider from localStorage:', savedProvider);
+      } else if (response.current_provider && providers.some(p => p.id === response.current_provider)) {
+        // Use backend's current provider
+        providerToUse = response.current_provider;
         console.log('Using backend current provider:', response.current_provider);
-        setSelectedProvider(response.current_provider);
-      } else {
-        const fallbackProvider = response.providers[0]?.id || '';
-        console.log('Using fallback provider:', fallbackProvider);
-        setSelectedProvider(fallbackProvider);
+      } else if (providers.length > 0) {
+        // Fallback to first available provider
+        providerToUse = providers[0].id;
+        console.log('Using fallback provider:', providerToUse);
+      }
+      
+      setSelectedProvider(providerToUse);
+      
+      // Set the saved model
+      if (savedModel) {
+        console.log('Using saved model:', savedModel);
+        setSelectedModel(savedModel);
       }
     } catch (error) {
       console.error('Failed to load configured providers:', error);
+      
+      // Fallback to localStorage if backend fails
+      const savedProvider = localStorage.getItem('ai_provider');
+      const savedSettings = localStorage.getItem('ai_settings');
+      
+      if (savedProvider) {
+        const providerNames: Record<string, string> = {
+          'openai': 'OpenAI (GPT-4, GPT-3.5)',
+          'anthropic': 'Anthropic (Claude)',
+          'google': 'Google (Gemini)',
+          'openrouter': 'OpenRouter',
+          'lmstudio': 'LM Studio (Local)',
+          'ollama': 'Ollama (Local)'
+        };
+        
+        let savedModel = '';
+        if (savedSettings) {
+          try {
+            const settings = JSON.parse(savedSettings);
+            savedModel = settings.model || '';
+          } catch (e) {
+            console.error('Failed to parse saved settings:', e);
+          }
+        }
+        
+        setAvailableProviders([{
+          id: savedProvider,
+          name: providerNames[savedProvider] || savedProvider,
+          model: savedModel || null
+        }]);
+        setSelectedProvider(savedProvider);
+        setSelectedModel(savedModel);
+        console.log('Using localStorage fallback:', savedProvider, savedModel);
+      }
     }
+  };
+
+  const showNotification = (type: 'success' | 'error' | 'warning' | 'info', message: string, duration: number = 5000) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), duration);
   };
 
   const loadConversation = async (id: number) => {
     try {
+      console.log('Loading conversation', id, 'from database...');
       const conversation = await api.getConversation(id);
+      const messageCount = conversation.messages?.length || 0;
+      console.log('✓ Loaded conversation', id, 'with', messageCount, 'messages from database');
+      
       setMessages(conversation.messages || []);
       setConversationTitle(conversation.title);
+      setConversationSummary(conversation.ai_summary || '');
+      setConversationStatus(conversation.status || 'active');
+      
+      // Log message details for debugging
+      if (messageCount > 0 && conversation.messages) {
+        console.log('First message:', conversation.messages[0]);
+        console.log('Last message:', conversation.messages[messageCount - 1]);
+      } else {
+        console.warn('⚠️ Conversation has no messages in database');
+      }
+      
+      // Show info if conversation is ended
+      if (conversation.status === 'ended') {
+        showNotification('info', 'This conversation has ended. Start a new conversation to continue chatting.', 7000);
+      }
     } catch (error) {
       console.error('Failed to load conversation:', error);
+      showNotification('error', 'Failed to load conversation from database');
     }
   };
 
@@ -106,9 +241,12 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       onConversationChange(conversation.id);
       setMessages([]);
       setConversationTitle(conversation.title);
+      setConversationSummary('');
+      setConversationStatus('active');
+      showNotification('success', 'New conversation started!', 3000);
     } catch (error) {
       console.error('Failed to create conversation:', error);
-      alert('Failed to start new conversation');
+      showNotification('error', 'Failed to start new conversation');
     }
   };
 
@@ -118,7 +256,13 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
     
     // Ensure we have a valid provider selected
     if (!selectedProvider) {
-      alert('Please select an AI provider before sending a message.');
+      showNotification('warning', 'Please select an AI provider before sending a message.');
+      return;
+    }
+    
+    // Check if conversation is ended
+    if (conversationStatus === 'ended') {
+      setEndedConversationDialog({ open: true, message: inputMessage.trim() });
       return;
     }
 
@@ -142,7 +286,7 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
         setConversationTitle(conversation.title);
       } catch (error) {
         console.error('Failed to create conversation:', error);
-        alert('Failed to start conversation. Please check if the backend is running.');
+        showNotification('error', 'Failed to start conversation. Please check if the backend is running.');
         setIsLoading(false);
         setInputMessage(inputMessage); // Restore message
         return;
@@ -156,21 +300,103 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
     // Final validation before sending
     if (!currentConversationId) {
       console.error('CRITICAL: No conversation ID after creation attempt!');
-      alert('Failed to create conversation. Please try again.');
+      showNotification('error', 'Failed to create conversation. Please try again.');
       setIsLoading(false);
       setInputMessage(userMessageContent); // Restore the message
       return;
     }
 
     try {
-      // Only send provider if it's actually selected
+      // Only send provider and model if they're actually selected
       const providerToSend = selectedProvider || undefined;
-      console.log('Sending message - conversationId:', currentConversationId, 'content:', userMessageContent, 'provider:', providerToSend);
-      const response = await api.sendMessage(currentConversationId, userMessageContent, providerToSend);
+      const modelToSend = selectedModel || undefined;
+      console.log('Sending message - conversationId:', currentConversationId, 'content:', userMessageContent, 'provider:', providerToSend, 'model:', modelToSend);
+      const response = await api.sendMessage(currentConversationId, userMessageContent, providerToSend, modelToSend);
+      
+      // Verify that messages have IDs (meaning they were saved to database)
+      if (!response.user_message.id || !response.ai_message.id) {
+        console.error('ERROR: Messages were not saved to database!', response);
+        throw new Error('Messages were not properly saved to database');
+      }
+      
+      console.log('✓ Messages saved to database - User message ID:', response.user_message.id, 'AI message ID:', response.ai_message.id);
+      
+      // Update local state with the saved messages
       setMessages((prev) => [...prev, response.user_message, response.ai_message]);
+      
+      // Auto-speak AI response if voice output is enabled
+      if (voiceOutput.isSupported() && response.ai_message?.content) {
+        try {
+          setIsSpeaking(true);
+          await voiceOutput.speak(response.ai_message.content);
+          setIsSpeaking(false);
+        } catch (error) {
+          console.log('Voice output skipped:', error);
+          setIsSpeaking(false);
+        }
+      }
+      
+      // Track behavior for intelligence learning
+      trackBehavior('message_sent', {
+        conversationId: currentConversationId,
+        messageLength: userMessageContent.length,
+        hasQuestion: userMessageContent.includes('?'),
+        timestamp: new Date().toISOString()
+      });
+      
+      // Analyze conversation every 5 messages for intelligence
+      if (messages.length > 0 && messages.length % 5 === 0) {
+        analyzeConversation(currentConversationId).catch(err => 
+          console.log('Intelligence analysis skipped:', err)
+        );
+      }
+      
+      // Verify messages were saved by reloading the conversation
+      // This ensures we're always showing what's actually in the database
+      setTimeout(async () => {
+        try {
+          const verification = await api.getConversation(currentConversationId);
+          console.log('✓ Verification: Conversation has', verification.messages?.length, 'messages in database');
+          
+          // If there's a mismatch, reload from database
+          if (verification.messages && verification.messages.length !== messages.length + 2) {
+            console.warn('Message count mismatch detected, reloading from database');
+            setMessages(verification.messages);
+          }
+        } catch (verifyError) {
+          console.warn('Could not verify message persistence:', verifyError);
+        }
+      }, 500);
+      
     } catch (error) {
       console.error('Failed to send message:', error);
-      alert('Failed to send message. Please try again.');
+      
+      // Check if the error is about an ended conversation
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('Cannot send messages to an ended conversation')) {
+        // Show dialog to start a new conversation
+        setEndedConversationDialog({ open: true, message: userMessageContent });
+      } else {
+        // Other error - show notification
+        showNotification('error', 'Failed to send message. Please try again.');
+        setInputMessage(userMessageContent); // Restore the message so user can try again
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGenerateSummary = async () => {
+    if (!conversationId) return;
+
+    try {
+      setIsLoading(true);
+      const result = await api.generateSummary(conversationId);
+      setConversationSummary(result.summary);
+      showNotification('success', 'Summary generated successfully!', 3000);
+    } catch (error) {
+      console.error('Failed to generate summary:', error);
+      showNotification('error', 'Failed to generate summary');
     } finally {
       setIsLoading(false);
     }
@@ -185,65 +411,175 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
     try {
       setIsLoading(true);
       const result = await api.endConversation(conversationId);
-      alert(`Conversation ended!\n\nSummary: ${result.summary}`);
-      onConversationChange(null);
-      setMessages([]);
-      setConversationTitle('');
+      setConversationSummary(result.summary);
+      setConversationStatus('ended');
+      
+      // Track conversation ending
+      trackBehavior('conversation_ended', {
+        conversationId,
+        messageCount: messages.length,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Analyze the ended conversation for intelligence
+      analyzeConversation(conversationId).catch(err => 
+        console.log('Intelligence analysis skipped:', err)
+      );
+      
+      showNotification('success', `Conversation ended! Summary: ${result.summary}`, 7000);
     } catch (error) {
       console.error('Failed to end conversation:', error);
-      alert('Failed to end conversation');
+      showNotification('error', 'Failed to end conversation');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStartNewConversationWithMessage = async () => {
+    if (!endedConversationDialog) return;
+    
+    const messageToSend = endedConversationDialog.message;
+    setEndedConversationDialog(null);
+    setIsLoading(true);
+    
+    try {
+      // Create a new conversation
+      const conversation = await api.createConversation();
+      onConversationChange(conversation.id);
+      setMessages([]);
+      
+      // Track new conversation
+      trackBehavior('conversation_started', {
+        conversationId: conversation.id,
+        timestamp: new Date().toISOString()
+      });
+      setConversationTitle(conversation.title);
+      setConversationSummary('');
+      setConversationStatus('active');
+      
+      // Send the message to the new conversation
+      const response = await api.sendMessage(
+        conversation.id, 
+        messageToSend, 
+        selectedProvider || undefined, 
+        selectedModel || undefined
+      );
+      
+      // Update local state with the saved messages
+      setMessages([response.user_message, response.ai_message]);
+      showNotification('success', 'New conversation started with your message!', 3000);
+      
+      console.log('✓ Message sent to new conversation');
+    } catch (error) {
+      console.error('Failed to create new conversation:', error);
+      showNotification('error', 'Failed to start new conversation. Please try again.');
+      setInputMessage(messageToSend); // Restore message
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)] bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <Card className="flex flex-col h-[calc(100vh-7rem)] sm:h-[calc(100vh-8rem)] overflow-hidden">
       {/* Chat Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
-        <div className="flex-1">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <span className="text-2xl">💬</span>
-            {conversationTitle || 'New Conversation'}
+      <CardHeader className="flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 border-b p-3 sm:p-4 md:p-6">
+        <div className="flex-1 w-full sm:w-auto">
+          <h2 className="text-base sm:text-lg md:text-xl font-semibold flex items-center gap-2">
+            <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="truncate">{conversationTitle || 'New Conversation'}</span>
           </h2>
           {conversationId && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 ml-9">Session #{conversationId}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">Session #{conversationId}</p>
           )}
         </div>
-        <div className="flex gap-2">
-          <button
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 w-full sm:w-auto">
+          <Button
             onClick={startNewConversation}
-            className="px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all transform hover:scale-105 shadow-md font-medium flex items-center gap-2"
+            variant="default"
+            size="sm"
+            className="bg-green-600 hover:bg-green-700 text-xs sm:text-sm flex-1 sm:flex-none"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            New Chat
-          </button>
-          {conversationId && (
-            <button
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden xs:inline ml-1">New Chat</span>
+          </Button>
+          {conversationId && messages.length > 0 && (
+            <>
+              <Button
+                onClick={handleGenerateSummary}
+                variant="outline"
+                size="sm"
+                disabled={isLoading}
+                className="text-xs sm:text-sm flex-1 sm:flex-none"
+              >
+                <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden md:inline ml-1">Summary</span>
+              </Button>
+              <ExportShareButtons conversationId={conversationId} />
+            </>
+          )}
+          {conversationId && conversationStatus === 'active' && (
+            <Button
               onClick={handleEndConversation}
-              className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all transform hover:scale-105 shadow-md font-medium flex items-center gap-2"
+              variant="destructive"
+              size="sm"
+              disabled={isLoading}
+              className="text-xs sm:text-sm flex-1 sm:flex-none"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              End & Summarize
-            </button>
+              <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden md:inline ml-1">End</span>
+            </Button>
+          )}
+          {voiceOutput.isSupported() && isSpeaking && (
+            <Button
+              onClick={() => {
+                voiceOutput.stop();
+                setIsSpeaking(false);
+              }}
+              variant="outline"
+              size="sm"
+              className="text-xs sm:text-sm"
+            >
+              <VolumeX className="w-3 h-3 sm:w-4 sm:h-4 animate-pulse" />
+              <span className="hidden md:inline ml-1">Stop</span>
+            </Button>
           )}
         </div>
-      </div>
+      </CardHeader>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-transparent to-blue-50/30 dark:to-gray-900/30">
-        {messages.length === 0 && (
-          <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-            <div className="text-center animate-fadeIn">
-              <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-full flex items-center justify-center">
-                <span className="text-5xl">💭</span>
+      <CardContent className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4">
+        {/* Display conversation summary if it exists */}
+        {conversationSummary && (
+          <Card className="bg-accent/50 border-primary/30 animate-slideDown">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="bg-primary/20 p-2 rounded-lg">
+                  <FileText className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold mb-1 flex items-center gap-2">
+                    Conversation Summary
+                    <Badge variant="outline" className="text-xs">
+                      {conversationStatus === 'ended' ? 'Ended' : 'Generated'}
+                    </Badge>
+                  </h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {conversationSummary}
+                  </p>
+                </div>
               </div>
-              <p className="text-xl font-semibold mb-3 text-gray-700 dark:text-gray-300">Start a Conversation</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md">
+            </CardContent>
+          </Card>
+        )}
+
+        {messages.length === 0 && !conversationSummary && (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center animate-fadeIn">
+              <div className="w-24 h-24 mx-auto mb-6 bg-primary/10 rounded-full flex items-center justify-center">
+                <MessageCircle className="w-12 h-12 text-primary" />
+              </div>
+              <p className="text-xl font-semibold mb-3">Start a Conversation</p>
+              <p className="text-sm text-muted-foreground max-w-md">
                 Ask me anything! I'm here to help with information, ideas, or just a friendly chat.
               </p>
             </div>
@@ -252,132 +588,276 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
 
         {messages.map((message, index) => (
           <div
-            key={`${message.id}-${message.sender}-${index}`}
-            className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} animate-slideUp`}
+            key={message.id || `temp-${message.sender}-${message.timestamp}-${index}`}
+            className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} animate-slideUp group`}
             style={{ animationDelay: `${index * 0.05}s` }}
           >
-            <div
-              className={`max-w-[75%] rounded-2xl px-5 py-3 shadow-md ${
+            <Card
+              className={`max-w-[95%] sm:max-w-[85%] md:max-w-[75%] ${
                 message.sender === 'user'
-                  ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white'
-                  : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600'
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : ''
               }`}
             >
-              <div className="flex items-center gap-2 mb-2">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm ${
-                  message.sender === 'user' 
-                    ? 'bg-blue-700' 
-                    : 'bg-gradient-to-br from-purple-500 to-blue-500'
-                }`}>
-                  {message.sender === 'user' ? '👤' : '🤖'}
+              <CardContent className="px-3 py-2 sm:px-4 sm:py-3 md:px-5">
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                  <Badge variant={message.sender === 'user' ? 'default' : 'secondary'} className="rounded-full w-5 h-5 sm:w-6 sm:h-6 p-0 flex items-center justify-center text-xs">
+                    {message.sender === 'user' ? '👤' : '🤖'}
+                  </Badge>
+                  <span className={`text-[10px] sm:text-xs font-semibold ${
+                    message.sender === 'user' ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                  }`}>
+                    {message.sender === 'user' ? 'You' : 'AI'}
+                  </span>
+                  <span className={`text-[10px] sm:text-xs ${
+                    message.sender === 'user' ? 'text-primary-foreground/60' : 'text-muted-foreground'
+                  }`}>
+                    {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                 </div>
-                <span className={`text-xs font-semibold ${
-                  message.sender === 'user' ? 'text-blue-100' : 'text-gray-600 dark:text-gray-400'
-                }`}>
-                  {message.sender === 'user' ? 'You' : 'AI Assistant'}
-                </span>
-                <span className={`text-xs ${
-                  message.sender === 'user' ? 'text-blue-200' : 'text-gray-400 dark:text-gray-500'
-                }`}>
-                  {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-              <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
-            </div>
+                <p className="whitespace-pre-wrap break-words leading-relaxed text-sm sm:text-base">{message.content}</p>
+                <MessageActions
+                  messageId={message.id}
+                  content={message.content}
+                  isUser={message.sender === 'user'}
+                  isBookmarked={message.is_bookmarked}
+                  reactions={message.reactions}
+                  onBookmarkToggle={async () => {
+                    if (!message.id) return;
+                    try {
+                      const result = await api.toggleBookmark(message.id);
+                      setMessages(prev => prev.map(m => 
+                        m.id === message.id 
+                          ? { ...m, is_bookmarked: result.is_bookmarked, bookmarked_at: result.bookmarked_at }
+                          : m
+                      ));
+                      showNotification('success', result.is_bookmarked ? 'Message bookmarked!' : 'Bookmark removed', 2000);
+                    } catch (error) {
+                      console.error('Failed to toggle bookmark:', error);
+                      showNotification('error', 'Failed to update bookmark');
+                    }
+                  }}
+                  onReaction={async (reaction) => {
+                    if (!message.id) return;
+                    try {
+                      const result = await api.addReaction(message.id, reaction);
+                      setMessages(prev => prev.map(m => 
+                        m.id === message.id 
+                          ? { ...m, reactions: result.reactions }
+                          : m
+                      ));
+                    } catch (error) {
+                      console.error('Failed to add reaction:', error);
+                      showNotification('error', 'Failed to add reaction');
+                    }
+                  }}
+                  onRetry={message.sender === 'user' ? () => {
+                    setInputMessage(message.content);
+                  } : undefined}
+                  onRegenerate={message.sender === 'ai' ? async () => {
+                    // Find the previous user message
+                    const userMessageIndex = index - 1;
+                    if (userMessageIndex >= 0 && messages[userMessageIndex].sender === 'user') {
+                      const userMessage = messages[userMessageIndex].content;
+                      
+                      // Remove the AI message and regenerate
+                      setMessages(prev => prev.slice(0, index));
+                      setIsLoading(true);
+                      
+                      try {
+                        const response = await api.sendMessage(
+                          conversationId!,
+                          userMessage,
+                          selectedProvider || undefined,
+                          selectedModel || undefined
+                        );
+                        
+                        // Add the new AI response
+                        setMessages(prev => [...prev, response.ai_message]);
+                      } catch (error) {
+                        console.error('Failed to regenerate:', error);
+                        showNotification('error', 'Failed to regenerate response');
+                        // Restore the original message
+                        setMessages(prev => [...prev, message]);
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }
+                  } : undefined}
+                />
+              </CardContent>
+            </Card>
           </div>
         ))}
 
         {isLoading && (
           <div className="flex justify-start animate-slideUp">
-            <div className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl px-5 py-4 shadow-md">
+            <Card className="px-5 py-4">
               <div className="flex items-center gap-3">
-                <div className="flex gap-1">
-                  <div className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce"></div>
-                  <div className="w-2.5 h-2.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  <div className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                </div>
-                <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">AI is thinking...</span>
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span className="text-sm font-medium">AI is thinking...</span>
               </div>
-            </div>
+            </Card>
           </div>
         )}
 
         <div ref={messagesEndRef} />
-      </div>
+      </CardContent>
 
       {/* Input Area */}
-      <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm">
-        <div className="flex gap-3">
+      <form onSubmit={handleSendMessage} className="p-2 sm:p-3 md:p-4 border-t">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           {availableProviders.length > 0 && (
-            <div className="flex flex-col gap-1">
-              <select
+            <div className="flex flex-col gap-1 w-full sm:w-auto">
+              <Select
                 value={selectedProvider}
-                onChange={(e) => setSelectedProvider(e.target.value)}
+                onValueChange={setSelectedProvider}
                 disabled={isLoading}
-                className="px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl 
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         disabled:opacity-50 disabled:cursor-not-allowed transition-all
-                         font-medium text-sm min-w-[200px]"
-                title="Select AI Provider"
               >
-                {availableProviders.map((provider) => (
-                  <option key={provider.id} value={provider.id}>
-                    {provider.name}
-                  </option>
-                ))}
-              </select>
-              {availableProviders.find(p => p.id === selectedProvider)?.model && (
-                <span className="text-xs text-gray-500 dark:text-gray-400 px-1">
-                  Model: {availableProviders.find(p => p.id === selectedProvider)?.model}
+                <SelectTrigger className="w-full sm:min-w-[180px] md:min-w-[200px] text-xs sm:text-sm">
+                  <SelectValue placeholder="Select AI Provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableProviders.map((provider) => (
+                    <SelectItem key={provider.id} value={provider.id} className="text-xs sm:text-sm">
+                      {provider.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(selectedModel || availableProviders.find(p => p.id === selectedProvider)?.model) && (
+                <span className="text-[10px] sm:text-xs text-muted-foreground px-1 truncate">
+                  Model: {selectedModel || availableProviders.find(p => p.id === selectedProvider)?.model}
                 </span>
               )}
             </div>
           )}
-          <input
-            type="text"
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Type your message here..."
-            disabled={isLoading || availableProviders.length === 0}
-            className="flex-1 px-5 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-xl 
-                     bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                     disabled:opacity-50 disabled:cursor-not-allowed
-                     placeholder:text-gray-400 dark:placeholder:text-gray-500
-                     transition-all"
-          />
-          <button
-            type="submit"
-            disabled={!inputMessage.trim() || isLoading || availableProviders.length === 0 || !selectedProvider}
-            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 
-                     transition-all disabled:opacity-50 disabled:cursor-not-allowed
-                     font-semibold shadow-lg transform hover:scale-105 disabled:transform-none
-                     flex items-center gap-2"
-          >
-            <span>Send</span>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </button>
+          <div className="flex gap-2 flex-1">
+            <Input
+              type="text"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              placeholder={conversationStatus === 'ended' ? 'Conversation ended...' : 'Type message...'}
+              disabled={isLoading || availableProviders.length === 0 || conversationStatus === 'ended'}
+              className="flex-1 text-sm sm:text-base"
+            />
+            <VoiceInput
+              onTranscript={(text) => setInputMessage(prev => prev ? prev + ' ' + text : text)}
+              disabled={isLoading || availableProviders.length === 0 || conversationStatus === 'ended'}
+            />
+            <Button
+              type="submit"
+              disabled={!inputMessage.trim() || isLoading || availableProviders.length === 0 || !selectedProvider || conversationStatus === 'ended'}
+              className="px-3 sm:px-6 md:px-8"
+              size="sm"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <span className="hidden sm:inline">Send</span>
+                  <Send className="w-4 h-4 sm:ml-1" />
+                </>
+              )}
+            </Button>
+          </div>
         </div>
         {availableProviders.length === 0 && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mt-2">
-            <div className="flex items-start gap-2">
-              <span className="text-yellow-600 dark:text-yellow-400 text-lg">⚠️</span>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-1">
-                  No AI providers configured
-                </p>
-                <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                  Please configure at least one AI provider (OpenAI, Anthropic, Google, or LM Studio) 
-                  in the settings to start chatting.
-                </p>
+          <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 mt-2">
+            <CardContent className="p-3">
+              <div className="flex items-start gap-2">
+                <span className="text-yellow-600 dark:text-yellow-400 text-lg">⚠️</span>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-1">
+                    No AI providers configured
+                  </p>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                    Please configure at least one AI provider (OpenAI, Anthropic, Google, or LM Studio) 
+                    in the settings to start chatting.
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
       </form>
-    </div>
+
+      {/* Notification Toast */}
+      {notification && (
+        <div className="fixed top-4 right-2 sm:right-4 left-2 sm:left-auto z-50 animate-slideDown max-w-sm sm:max-w-md">
+          <Card className={`shadow-lg ${
+            notification.type === 'success' ? 'border-green-500' : 
+            notification.type === 'error' ? 'border-red-500' : 
+            notification.type === 'warning' ? 'border-yellow-500' : 
+            'border-blue-500'
+          }`}>
+            <CardContent className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4">
+              {notification.type === 'success' && <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />}
+              {notification.type === 'error' && <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 flex-shrink-0" />}
+              {notification.type === 'warning' && <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 flex-shrink-0" />}
+              {notification.type === 'info' && <Info className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 flex-shrink-0" />}
+              <p className="font-medium text-xs sm:text-sm">{notification.message}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Ended Conversation Dialog */}
+      <Dialog open={endedConversationDialog?.open || false} onOpenChange={(open) => {
+        if (!open) {
+          setEndedConversationDialog(null);
+          setInputMessage(endedConversationDialog?.message || '');
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-yellow-600">
+              <AlertTriangle className="w-5 h-5" />
+              Conversation Has Ended
+            </DialogTitle>
+            <DialogDescription className="pt-4">
+              This conversation has been ended and is now read-only.
+              <br />
+              <br />
+              Would you like to start a new conversation with your message?
+              <br />
+              <br />
+              <span className="text-sm italic text-muted-foreground">
+                "{endedConversationDialog?.message}"
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setInputMessage(endedConversationDialog?.message || '');
+                setEndedConversationDialog(null);
+              }}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleStartNewConversationWithMessage}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Starting...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Start New Conversation
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 }

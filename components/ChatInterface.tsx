@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import MessageActions from '@/components/MessageActions';
 
 interface ChatInterfaceProps {
   conversationId: number | null;
@@ -517,7 +518,7 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
         {messages.map((message, index) => (
           <div
             key={message.id || `temp-${message.sender}-${message.timestamp}-${index}`}
-            className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} animate-slideUp`}
+            className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} animate-slideUp group`}
             style={{ animationDelay: `${index * 0.05}s` }}
           >
             <Card
@@ -544,6 +545,44 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
                   </span>
                 </div>
                 <p className="whitespace-pre-wrap break-words leading-relaxed text-sm sm:text-base">{message.content}</p>
+                <MessageActions
+                  messageId={message.id}
+                  content={message.content}
+                  isUser={message.sender === 'user'}
+                  onRetry={message.sender === 'user' ? () => {
+                    setInputMessage(message.content);
+                  } : undefined}
+                  onRegenerate={message.sender === 'ai' ? async () => {
+                    // Find the previous user message
+                    const userMessageIndex = index - 1;
+                    if (userMessageIndex >= 0 && messages[userMessageIndex].sender === 'user') {
+                      const userMessage = messages[userMessageIndex].content;
+                      
+                      // Remove the AI message and regenerate
+                      setMessages(prev => prev.slice(0, index));
+                      setIsLoading(true);
+                      
+                      try {
+                        const response = await api.sendMessage(
+                          conversationId!,
+                          userMessage,
+                          selectedProvider || undefined,
+                          selectedModel || undefined
+                        );
+                        
+                        // Add the new AI response
+                        setMessages(prev => [...prev, response.ai_message]);
+                      } catch (error) {
+                        console.error('Failed to regenerate:', error);
+                        showNotification('error', 'Failed to regenerate response');
+                        // Restore the original message
+                        setMessages(prev => [...prev, message]);
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }
+                  } : undefined}
+                />
               </CardContent>
             </Card>
           </div>

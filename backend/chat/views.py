@@ -434,19 +434,29 @@ def search_conversations(request):
     }, status=status.HTTP_200_OK)
 
 
-@api_view(['GET'])
 def export_conversation(request, pk, format):
     """
     GET: Export conversation in specified format (json, markdown, pdf)
     
     Returns: File download
     """
+    # Don't use @api_view decorator to avoid REST Framework's content negotiation
+    # which only supports JSON by default
+    
+    if request.method != 'GET':
+        return HttpResponse(
+            '{"error": "Method not allowed"}',
+            status=405,
+            content_type='application/json'
+        )
+    
     try:
         conversation = Conversation.objects.get(id=pk)
     except Conversation.DoesNotExist:
-        return Response(
-            {"error": "Conversation not found"},
-            status=status.HTTP_404_NOT_FOUND
+        return HttpResponse(
+            '{"error": "Conversation not found"}',
+            status=404,
+            content_type='application/json'
         )
     
     export_service = ExportService()
@@ -470,15 +480,24 @@ def export_conversation(request, pk, format):
             response['Content-Disposition'] = f'attachment; filename="conversation_{pk}.pdf"'
             return response
         except Exception as e:
-            return Response(
-                {"error": f"Failed to generate PDF: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            return HttpResponse(
+                f'{{"error": "Failed to generate PDF: {str(e)}"}}',
+                status=500,
+                content_type='application/json'
             )
     
+    elif format == 'md':
+        # Support 'md' as an alias for 'markdown'
+        content = export_service.export_to_markdown(conversation)
+        response = HttpResponse(content, content_type='text/markdown')
+        response['Content-Disposition'] = f'attachment; filename="conversation_{pk}.md"'
+        return response
+    
     else:
-        return Response(
-            {"error": f"Unsupported format: {format}. Use json, markdown, or pdf."},
-            status=status.HTTP_400_BAD_REQUEST
+        return HttpResponse(
+            f'{{"error": "Unsupported format: {format}. Use json, markdown, md, or pdf."}}',
+            status=400,
+            content_type='application/json'
         )
 
 

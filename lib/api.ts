@@ -116,10 +116,11 @@ class APIClient {
   }
 
   // Message endpoints
-  async sendMessage(conversationId: number, content: string, provider?: string, model?: string): Promise<SendMessageResponse> {
+  async sendMessage(conversationId: number, content: string, provider?: string, model?: string, userId: string = 'default_user'): Promise<SendMessageResponse> {
     const body: any = {
       conversation_id: conversationId,
       content,
+      user_id: userId,
     };
     
     // Only include provider if it's defined and not empty

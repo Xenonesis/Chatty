@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { api, Message } from '@/lib/api';
+import { useIntelligence } from '@/lib/useIntelligence';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -42,6 +43,9 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null);
   const [endedConversationDialog, setEndedConversationDialog] = useState<{ open: boolean; message: string } | null>(null);
+  
+  // Intelligence tracking
+  const { trackBehavior, analyzeConversation } = useIntelligence();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -316,6 +320,21 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       // Update local state with the saved messages
       setMessages((prev) => [...prev, response.user_message, response.ai_message]);
       
+      // Track behavior for intelligence learning
+      trackBehavior('message_sent', {
+        conversationId: currentConversationId,
+        messageLength: userMessageContent.length,
+        hasQuestion: userMessageContent.includes('?'),
+        timestamp: new Date().toISOString()
+      });
+      
+      // Analyze conversation every 5 messages for intelligence
+      if (messages.length > 0 && messages.length % 5 === 0) {
+        analyzeConversation(currentConversationId).catch(err => 
+          console.log('Intelligence analysis skipped:', err)
+        );
+      }
+      
       // Verify messages were saved by reloading the conversation
       // This ensures we're always showing what's actually in the database
       setTimeout(async () => {
@@ -378,6 +397,19 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       const result = await api.endConversation(conversationId);
       setConversationSummary(result.summary);
       setConversationStatus('ended');
+      
+      // Track conversation ending
+      trackBehavior('conversation_ended', {
+        conversationId,
+        messageCount: messages.length,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Analyze the ended conversation for intelligence
+      analyzeConversation(conversationId).catch(err => 
+        console.log('Intelligence analysis skipped:', err)
+      );
+      
       showNotification('success', `Conversation ended! Summary: ${result.summary}`, 7000);
     } catch (error) {
       console.error('Failed to end conversation:', error);
@@ -399,6 +431,12 @@ export default function ChatInterface({ conversationId, onConversationChange }: 
       const conversation = await api.createConversation();
       onConversationChange(conversation.id);
       setMessages([]);
+      
+      // Track new conversation
+      trackBehavior('conversation_started', {
+        conversationId: conversation.id,
+        timestamp: new Date().toISOString()
+      });
       setConversationTitle(conversation.title);
       setConversationSummary('');
       setConversationStatus('active');

@@ -37,7 +37,19 @@ Bring advanced conversation intelligence to your team. Chatty captures every mes
 
 ## What's New
 
-### 🚀 Latest Features (v2.0)
+### 🚀 Latest Features (v2.1)
+
+- **🧠 AI Intelligence System**: Learns from user conversations to provide personalized responses
+  - Automatic pattern detection and preference learning
+  - Topic interest tracking
+  - Communication style adaptation
+  - Confidence-based intelligence scoring
+  - Local storage + database hybrid architecture
+- **👤 Intelligence Profile**: View what the AI has learned about you
+- **📊 Learning Analytics**: Track intelligence growth and confidence scores
+- **🎯 Personalized AI Responses**: Context-aware responses based on learned preferences
+
+### Previous Features (v2.0)
 
 - **🤖 Auto-Fetch AI Models**: Real-time API key validation and automatic model discovery from providers
 - **🎨 Modern Glass-Morphism UI**: Professional design with gradients, animations, and responsive layouts
@@ -57,6 +69,7 @@ Bring advanced conversation intelligence to your team. Chatty captures every mes
 
 ## Key Features
 
+- **🧠 AI Intelligence System** – Learns from your conversations to provide personalized, context-aware responses tailored to your preferences and communication style.
 - **Unified Conversation Hub** – Manage multiple AI chat sessions with persistent history and metadata.
 - **Conversation Intelligence** – Auto-generated summaries, semantic search, and natural-language queries across past chats.
 - **Pluggable AI Providers** – Switch between OpenAI, Anthropic, Google Gemini, or LM Studio without code changes.
@@ -66,7 +79,29 @@ Bring advanced conversation intelligence to your team. Chatty captures every mes
 
 ### Detailed Features
 
-#### 1. Real-Time Chat Interface ✨
+#### 1. AI Intelligence System 🧠
+
+**Personalized Learning Engine** that adapts to your communication style and preferences.
+
+- **Automatic Learning**: Analyzes conversations to detect patterns and preferences
+- **Preference Detection**: Learns if you prefer detailed responses, code examples, or step-by-step instructions
+- **Topic Tracking**: Identifies and remembers your areas of interest
+- **Communication Style**: Adapts to your message length and question patterns
+- **Confidence Scoring**: Tracks reliability of learned insights (0.0 to 1.0)
+- **Privacy-First**: Your intelligence data is isolated and can be reset anytime
+- **Dual Storage**: Local browser cache for speed + database for persistence
+- **Intelligence Profile**: View what the AI has learned about you
+- **Learning Analytics**: Track intelligence growth with statistics and confidence scores
+
+**Quick Start**: Click the User icon (👤) to view your intelligence profile and see what the AI has learned!
+
+📚 **Documentation**: 
+- [Quick Start Guide](./INTELLIGENCE_QUICK_START.md)
+- [Full Documentation](./INTELLIGENCE_SYSTEM.md)
+- [Architecture](./INTELLIGENCE_ARCHITECTURE.md)
+- [Quick Reference](./INTELLIGENCE_REFERENCE.md)
+
+#### 2. Real-Time Chat Interface ✨
 
 Interactive chat interface for real-time conversations with AI, featuring a modern, ChatGPT-like UI.
 

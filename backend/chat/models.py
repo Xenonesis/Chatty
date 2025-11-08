@@ -3,6 +3,7 @@ Database models for the chat application.
 """
 from django.db import models
 from django.utils import timezone
+from .intelligence_models import UserIntelligence, ConversationInsight, LearningEvent
 
 
 class Conversation(models.Model):

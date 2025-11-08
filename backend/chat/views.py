@@ -17,6 +17,7 @@ from .serializers import (
     MessageCreateSerializer
 )
 from .ai_service import AIService
+from .intelligence_service import IntelligenceService
 
 
 class ConversationListView(generics.ListCreateAPIView):
@@ -112,14 +113,23 @@ def send_message(request):
     
     print(f"User message saved with ID: {user_message.id}")
     
+    # Get user intelligence for personalization
+    user_id = request.data.get('user_id', 'default_user')
+    intelligence_service = IntelligenceService(user_id=user_id)
+    personalized_context = intelligence_service.get_personalized_context()
+    
     # Prepare conversation history for AI
     previous_messages = Message.objects.filter(conversation=conversation).order_by('timestamp')
     messages_for_ai = []
     
-    # Add system message
+    # Add system message with personalized context
+    system_content = "You are a helpful, friendly AI assistant. Provide clear and concise responses."
+    if personalized_context:
+        system_content += f"\n\nUser context: {personalized_context}"
+    
     messages_for_ai.append({
         "role": "system",
-        "content": "You are a helpful, friendly AI assistant. Provide clear and concise responses."
+        "content": system_content
     })
     
     # Add conversation history
@@ -171,6 +181,15 @@ def send_message(request):
             {"error": "Messages were not properly persisted to database"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+    
+    # Analyze conversation for intelligence (async in background would be better)
+    # Only analyze every 3 messages to reduce overhead
+    if conversation.get_message_count() % 3 == 0:
+        try:
+            intelligence_service.analyze_conversation(conversation.id)
+        except Exception as e:
+            print(f"Intelligence analysis error: {str(e)}")
+            # Don't fail the request if intelligence fails
     
     return Response({
         "user_message": MessageSerializer(user_message).data,
